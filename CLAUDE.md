@@ -37,6 +37,10 @@ The CLI's `tsconfig.json` overrides the JSX pipeline: `jsx: react-jsx` with `jsx
 
 `bunfig.toml` sets `linker = "isolated"` to prevent phantom dependencies. A package may only import deps declared in its own `package.json`; add deps to the specific app that uses them, not the root.
 
+### Naming conventions
+
+Source files are kebab-case (`prompt-input.tsx`), even when the default export is a PascalCase React component (`PromptInput`). In `apps/cli`, reusable UI lives in `src/components/` and full screens in `src/screens/` — keep them separate.
+
 ## Skills
 
 `.agents/skills/` contains vendored agent skill references for the core libraries (`bun`, `hono`, `opentui`), pinned in `skills-lock.json`. Consult these (especially the OpenTUI references under `.agents/skills/opentui/references/`) when working on the relevant app — OpenTUI's component/layout API is non-obvious and documented there.
