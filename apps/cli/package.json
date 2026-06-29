@@ -5,7 +5,7 @@
   "type": "module",
   "module": "src/index.tsx",
   "bin": {
-    "babal": "src/index.tsx"
+    "babalcode": "src/index.tsx"
   },
   "scripts": {
     "dev": "bun --watch run src/index.tsx",
