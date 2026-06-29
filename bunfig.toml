@@ -1,0 +1,3 @@
+# Stricter dependency isolation for the workspace (prevents phantom deps).
+[install]
+linker = "isolated"

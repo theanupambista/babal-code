@@ -1,0 +1,21 @@
+{
+  "name": "babal-code",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "workspaces": [
+    "server",
+    "cli"
+  ],
+  "scripts": {
+    "dev:server": "bun run --filter @babalcode/server dev",
+    "dev:cli": "bun run --filter @babalcode/cli dev",
+    "start:server": "bun run --filter @babalcode/server start",
+    "start:cli": "bun run --filter @babalcode/cli start",
+    "typecheck": "bun run --filter '*' typecheck"
+  },
+  "devDependencies": {
+    "@types/bun": "latest",
+    "typescript": "^5"
+  }
+}

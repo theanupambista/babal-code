@@ -1,0 +1,23 @@
+{
+  "name": "@babalcode/cli",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "module": "src/index.tsx",
+  "bin": {
+    "babal": "src/index.tsx"
+  },
+  "scripts": {
+    "dev": "bun --watch run src/index.tsx",
+    "start": "bun run src/index.tsx",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@opentui/core": "^0.1",
+    "@opentui/react": "^0.1",
+    "react": "^19"
+  },
+  "devDependencies": {
+    "@types/react": "^19"
+  }
+}
