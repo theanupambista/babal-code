@@ -9,9 +9,9 @@
   ],
   "scripts": {
     "dev:server": "bun run --filter @babalcode/server dev",
-    "dev:cli": "bun run --filter @babalcode/cli dev",
+    "dev:cli": "bun run --cwd cli dev",
     "start:server": "bun run --filter @babalcode/server start",
-    "start:cli": "bun run --filter @babalcode/cli start",
+    "start:cli": "bun run --cwd cli start",
     "typecheck": "bun run --filter '*' typecheck"
   },
   "devDependencies": {
