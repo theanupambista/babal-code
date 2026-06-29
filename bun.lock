@@ -9,7 +9,7 @@
         "typescript": "^5",
       },
     },
-    "cli": {
+    "apps/cli": {
       "name": "@babalcode/cli",
       "version": "0.0.0",
       "bin": {
@@ -24,7 +24,7 @@
         "@types/react": "^19",
       },
     },
-    "server": {
+    "apps/server": {
       "name": "@babalcode/server",
       "version": "0.0.0",
       "dependencies": {
@@ -33,9 +33,9 @@
     },
   },
   "packages": {
-    "@babalcode/cli": ["@babalcode/cli@workspace:cli"],
+    "@babalcode/cli": ["@babalcode/cli@workspace:apps/cli"],
 
-    "@babalcode/server": ["@babalcode/server@workspace:server"],
+    "@babalcode/server": ["@babalcode/server@workspace:apps/server"],
 
     "@dimforge/rapier2d-simd-compat": ["@dimforge/rapier2d-simd-compat@0.17.3", "", {}, "sha512-bijvwWz6NHsNj5e5i1vtd3dU2pDhthSaTUZSh14DUGGKJfw8eMnlWZsxwHBxB/a3AXVNDjL9abuHw1k9FGR+jg=="],
 
