@@ -1,14 +1,11 @@
-/** Central route path constants — keep route defs and `navigate()` calls in sync. */
+/**
+ * Central route path constants — keep route defs and `navigate()` calls in sync.
+ *
+ * A slash command typed into the prompt *is* the route path (e.g. `/settings`),
+ * so registering a route here makes it reachable both via `navigate()` and as a
+ * slash command. No separate command list to maintain.
+ */
 export const ROUTES = {
   home: "/",
   settings: "/settings",
 } as const;
-
-/**
- * Slash commands typed into the prompt that navigate to a screen.
- * Add a screen here to make it reachable via `/name` from the textarea.
- */
-export const SLASH_ROUTES: Record<string, string> = {
-  "/home": ROUTES.home,
-  "/settings": ROUTES.settings,
-};

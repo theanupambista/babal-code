@@ -1,7 +1,6 @@
 import { useNavigate } from "react-router";
 import { Logo } from "../components/logo";
 import { PromptInput } from "../components/prompt-input";
-import { SLASH_ROUTES } from "../routes";
 import { colors } from "../theme";
 
 /**
@@ -12,9 +11,11 @@ export function Home() {
   const navigate = useNavigate();
 
   const handleSubmit = (value: string) => {
-    const route = SLASH_ROUTES[value.trim().toLowerCase()];
-    if (route) {
-      navigate(route);
+    const text = value.trim();
+    // A slash command is just the route path: navigate to it and let the router
+    // resolve it (unknown paths fall through to the `*` NotFound screen).
+    if (text.startsWith("/")) {
+      navigate(text.toLowerCase());
       return;
     }
     // TODO: treat non-command input as a real prompt (route to a session screen).
