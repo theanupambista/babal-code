@@ -1,13 +1,4 @@
-import { Hono } from "hono";
-import { logger } from "hono/logger";
-
-const app = new Hono();
-
-app.use(logger());
-
-app.get("/", (c) => c.json({ name: "@babalcode/server", status: "ok" }));
-
-app.get("/health", (c) => c.json({ status: "healthy", uptime: process.uptime() }));
+import { app } from "./app";
 
 const port = Number(process.env.PORT ?? 3000);
 
