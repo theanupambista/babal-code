@@ -1,13 +1,15 @@
 import type { TextareaRenderable } from "@opentui/core";
 import { useRef, useState } from "react";
-import { colors } from "../theme";
+import { colors } from "../../theme";
 
-type PromptInputProps = {
+type ChatTextareaProps = {
   /** Called with the trimmed message when the user submits. */
   onSubmit?: (value: string) => void;
   placeholder?: string;
   /** Whether the textarea owns keyboard focus. */
   focused?: boolean;
+  /** Visible height of the input in rows. */
+  rows?: number;
 };
 
 // Enter submits; Shift+Enter (where the terminal reports it) inserts a newline.
@@ -17,16 +19,20 @@ const KEY_BINDINGS = [
 ];
 
 /**
- * Multi-line prompt box for the home screen, modelled on opencode's input.
+ * Multi-line chat input, modelled on opencode's prompt.
  *
  * The textarea is uncontrolled: we read its text from the renderable ref on
  * submit, then bump `generation` to remount it with an empty `initialValue`.
+ *
+ * `flexShrink={0}` keeps the fixed-height input from being squeezed to nothing
+ * when it sits next to a `flexGrow` scrollback in the chat layout.
  */
-export function PromptInput({
+export function ChatTextarea({
   onSubmit,
   placeholder = "Ask babal code anything…",
   focused = true,
-}: PromptInputProps) {
+  rows = 3,
+}: ChatTextareaProps) {
   const textareaRef = useRef<TextareaRenderable>(null);
   const [generation, setGeneration] = useState(0);
 
@@ -38,7 +44,7 @@ export function PromptInput({
   };
 
   return (
-    <box flexDirection="column" width={64}>
+    <box flexDirection="column" flexShrink={0}>
       <box
         border
         borderStyle="rounded"
@@ -51,7 +57,7 @@ export function PromptInput({
           ref={textareaRef}
           placeholder={placeholder}
           focused={focused}
-          height={3}
+          height={rows}
           wrapMode="word"
           textColor={colors.text}
           cursorColor={colors.accent}

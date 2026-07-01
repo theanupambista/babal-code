@@ -1,15 +1,10 @@
 import { useChat } from "@ai-sdk/react";
-import { DefaultChatTransport, type UIMessage } from "ai";
+import { DefaultChatTransport } from "ai";
 import { useNavigate } from "react-router";
+import { ChatError, ChatLayout, ChatTextarea, renderMessageParts } from "../components/chat";
 import { Logo } from "../components/logo";
-import { PromptInput } from "../components/prompt-input";
 import { client } from "../lib/client";
 import { colors } from "../theme";
-
-/** Concatenates a UI message's text parts into a single string. */
-function messageText(message: UIMessage): string {
-  return message.parts.map((part) => (part.type === "text" ? part.text : "")).join("");
-}
 
 /**
  * Home screen: a centred ASCII wordmark above the prompt until the first
@@ -22,7 +17,7 @@ function messageText(message: UIMessage): string {
 export function Home() {
   const navigate = useNavigate();
 
-  const { messages, sendMessage, status, error } = useChat({
+  const { messages, sendMessage, status, error, regenerate, clearError } = useChat({
     transport: new DefaultChatTransport({ api: client.chat.$url().toString() }),
   });
 
@@ -42,32 +37,25 @@ export function Home() {
     return (
       <box flexGrow={1} flexDirection="column" alignItems="center" justifyContent="center" gap={2}>
         <Logo />
-        <PromptInput onSubmit={handleSubmit} />
-        <text fg={colors.muted}>type /settings to navigate</text>
+        <box width={64}>
+          <ChatTextarea onSubmit={handleSubmit} />
+        </box>
       </box>
     );
   }
 
-  // Once a conversation starts, switch to a top-anchored chat layout.
+  // Once a conversation starts, switch to the top-anchored chat shell.
   return (
-    <box flexGrow={1} flexDirection="column" padding={1} gap={1}>
-      <scrollbox flexGrow={1} stickyScroll stickyStart="bottom">
-        <box flexDirection="column" gap={1}>
-          {messages.map((message) => {
-            const isUser = message.role === "user";
-            return (
-              <box key={message.id} flexDirection="column">
-                <text fg={isUser ? colors.accent : colors.muted}>{isUser ? "you" : "babal"}</text>
-                <text fg={colors.text}>{messageText(message) || " "}</text>
-              </box>
-            );
-          })}
-          {status === "submitted" && <text fg={colors.muted}>…thinking</text>}
-          {error && <text fg={colors.muted}>Error: {error.message}</text>}
-        </box>
-      </scrollbox>
-
-      <PromptInput onSubmit={handleSubmit} />
-    </box>
+    <ChatLayout
+      input={<ChatTextarea onSubmit={handleSubmit} />}
+      banner={
+        status === "error" && error ? (
+          <ChatError message={error.message} onRetry={() => regenerate()} onDismiss={clearError} />
+        ) : null
+      }
+    >
+      {messages.flatMap(renderMessageParts)}
+      {status === "submitted" && <text fg={colors.muted}>…thinking</text>}
+    </ChatLayout>
   );
 }

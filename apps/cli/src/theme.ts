@@ -6,4 +6,6 @@ export const colors = {
   text: "#c0caf5",
   /** Secondary / muted text and unfocused borders. */
   muted: "#565f89",
+  /** Failures — error banner and failed tool calls. */
+  danger: "#f7768e",
 } as const;
