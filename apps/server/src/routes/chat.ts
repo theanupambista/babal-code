@@ -1,8 +1,18 @@
 import { google } from "@ai-sdk/google";
+import { prisma, type Prisma } from "@babalcode/db";
 import { zValidator } from "@hono/zod-validator";
-import { convertToModelMessages, stepCountIs, streamText, tool, type UIMessage } from "ai";
+import {
+  convertToModelMessages,
+  generateId,
+  stepCountIs,
+  streamText,
+  tool,
+  type UIMessage,
+} from "ai";
 import { Hono } from "hono";
 import { z } from "zod";
+
+const MODEL_ID = "gemini-2.5-flash";
 
 // Tools the model may call mid-turn. `execute` runs server-side; its result is
 // streamed back as a tool part (rendered by the CLI's `ToolMessage`). Keep these
@@ -30,7 +40,10 @@ const tools = {
 
 // Loosely validates the shape `convertToModelMessages` needs. Parts are kept
 // permissive (passthrough) since the AI SDK does the deep per-part validation.
+// `id` is the chat id `useChat` sends on every request — we use it as the
+// session id so one conversation maps to one persisted session.
 const chatRequestSchema = z.object({
+  id: z.string().optional(),
   messages: z
     .array(
       z.object({
@@ -41,6 +54,53 @@ const chatRequestSchema = z.object({
     )
     .min(1),
 });
+
+/** Next free position in a session's timeline. Errors and messages share it. */
+async function nextSeq(sessionId: string): Promise<number> {
+  const last = await prisma.entry.findFirst({
+    where: { sessionId },
+    orderBy: { seq: "desc" },
+    select: { seq: true },
+  });
+  return (last?.seq ?? -1) + 1;
+}
+
+/**
+ * Append a message to a session's timeline. Idempotent on `(sessionId,
+ * messageId)` so a client re-send or retry updates in place instead of
+ * duplicating — the whole history is re-sent on every turn.
+ */
+async function persistMessage(
+  sessionId: string,
+  message: { id?: string; role: string; parts: unknown },
+): Promise<void> {
+  const messageId = message.id ?? generateId();
+  await prisma.entry.upsert({
+    where: { sessionId_messageId: { sessionId, messageId } },
+    create: {
+      sessionId,
+      seq: await nextSeq(sessionId),
+      type: "message",
+      messageId,
+      role: message.role,
+      parts: message.parts as Prisma.InputJsonValue,
+    },
+    update: {},
+  });
+}
+
+/** Append a failure to the timeline at the point it occurred. */
+async function persistError(sessionId: string, error: unknown): Promise<void> {
+  await prisma.entry.create({
+    data: {
+      sessionId,
+      seq: await nextSeq(sessionId),
+      type: "error",
+      errorText: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? (error.stack ?? null) : null,
+    },
+  });
+}
 
 /**
  * Chat route group, mounted at `/chat` by `app.ts`.
@@ -53,10 +113,28 @@ const chatRequestSchema = z.object({
 export const chatRoutes = new Hono()
   // Multi-turn chat endpoint consumed by the CLI's `useChat`. Expects a UI
   // message stream request body and replies with the UI message stream protocol.
+  // Every turn is persisted to a session so the full conversation — messages,
+  // tool calls, reasoning, and errors — is recorded in order.
   .post("/", zValidator("json", chatRequestSchema), async (c) => {
-    const { messages } = c.req.valid("json");
+    const { id, messages } = c.req.valid("json");
+    const sessionId = id ?? generateId();
+
+    // Ensure the session exists; `update: {}` makes this a no-op on later turns.
+    await prisma.session.upsert({
+      where: { id: sessionId },
+      create: { id: sessionId, model: MODEL_ID },
+      update: {},
+    });
+
+    // Persist the just-sent user message before streaming so it is recorded even
+    // if the assistant turn fails.
+    const lastMessage = messages[messages.length - 1];
+    if (lastMessage?.role === "user") {
+      await persistMessage(sessionId, lastMessage);
+    }
+
     const result = streamText({
-      model: google("gemini-2.5-flash"),
+      model: google(MODEL_ID),
       messages: await convertToModelMessages(messages as UIMessage[]),
       tools,
       // Without a stop condition the run ends after the tool call; `stepCountIs`
@@ -69,5 +147,21 @@ export const chatRoutes = new Hono()
     });
     // `sendReasoning` is required for reasoning parts to reach the UI message
     // stream; without it the CLI's `ReasoningMessage` branch never fires.
-    return result.toUIMessageStreamResponse({ sendReasoning: true });
+    return result.toUIMessageStreamResponse({
+      sendReasoning: true,
+      // Persistence mode: gives the response message a stable id we can store.
+      originalMessages: messages as UIMessage[],
+      generateMessageId: generateId,
+      onFinish: ({ responseMessage }) => {
+        // A failed turn still fires `onFinish` with an empty assistant message —
+        // skip it so the timeline only carries the `onError` entry.
+        if (responseMessage.parts.length === 0) return;
+        return persistMessage(sessionId, responseMessage);
+      },
+      onError: (error) => {
+        // Record the failure at its timeline position, then surface it to the UI.
+        void persistError(sessionId, error).catch(() => {});
+        return error instanceof Error ? error.message : String(error);
+      },
+    });
   });
