@@ -40,10 +40,9 @@ const tools = {
 
 // Loosely validates the shape `convertToModelMessages` needs. Parts are kept
 // permissive (passthrough) since the AI SDK does the deep per-part validation.
-// `id` is the chat id `useChat` sends on every request — we use it as the
-// session id so one conversation maps to one persisted session.
+// The session id comes from the path param, not the body — `DefaultChatTransport`
+// still sends an `id`, but we ignore it.
 const chatRequestSchema = z.object({
-  id: z.string().optional(),
   messages: z
     .array(
       z.object({
@@ -103,21 +102,40 @@ async function persistError(sessionId: string, error: unknown): Promise<void> {
 }
 
 /**
- * Chat route group, mounted at `/chat` by `app.ts`.
+ * Session route group, mounted at `/sessions` by `app.ts`.
  *
  * Route groups follow this shape: a self-contained `Hono` instance whose routes
  * are chained (so Hono can infer the types that power the RPC client) and
  * exported for `app.route()` to mount. Add new groups as sibling files under
  * `routes/` and mount them the same way.
  */
-export const chatRoutes = new Hono()
+export const sessionRoutes = new Hono()
+  // Read a session's timeline as `UIMessage[]`, ready to seed the CLI's `useChat`.
+  // Only message entries are replayed — errors stay in the DB for the record but
+  // `useChat` treats errors as transient/live-only, so they are dropped here.
+  // Returns an empty list for an unknown session so a freshly created (not yet
+  // persisted) id can be fetched without a 404.
+  .get("/:id/messages", async (c) => {
+    const sessionId = c.req.param("id");
+    const entries = await prisma.entry.findMany({
+      where: { sessionId, type: "message" },
+      orderBy: { seq: "asc" },
+      select: { messageId: true, role: true, parts: true },
+    });
+    const messages = entries.map((e) => ({
+      id: e.messageId ?? generateId(),
+      role: e.role,
+      parts: e.parts,
+    }));
+    return c.json({ messages });
+  })
   // Multi-turn chat endpoint consumed by the CLI's `useChat`. Expects a UI
   // message stream request body and replies with the UI message stream protocol.
-  // Every turn is persisted to a session so the full conversation — messages,
+  // Every turn is persisted to the session so the full conversation — messages,
   // tool calls, reasoning, and errors — is recorded in order.
-  .post("/", zValidator("json", chatRequestSchema), async (c) => {
-    const { id, messages } = c.req.valid("json");
-    const sessionId = id ?? generateId();
+  .post("/:id/messages", zValidator("json", chatRequestSchema), async (c) => {
+    const sessionId = c.req.param("id");
+    const { messages } = c.req.valid("json");
 
     // Ensure the session exists; `update: {}` makes this a no-op on later turns.
     await prisma.session.upsert({

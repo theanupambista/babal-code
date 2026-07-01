@@ -1,61 +1,40 @@
-import { useChat } from "@ai-sdk/react";
-import { DefaultChatTransport } from "ai";
+import { generateId } from "ai";
 import { useNavigate } from "react-router";
-import { ChatError, ChatLayout, ChatTextarea, renderMessageParts } from "../components/chat";
+import { ChatTextarea } from "../components/chat";
 import { Logo } from "../components/logo";
-import { client } from "../lib/client";
-import { colors } from "../theme";
+import { ROUTES } from "../routes";
 
 /**
- * Home screen: a centred ASCII wordmark above the prompt until the first
- * message, then a top-anchored chat that streams assistant replies
- * token-by-token from the server's POST /chat endpoint via `useChat`.
+ * Home screen: a centred ASCII wordmark above the prompt — the launcher.
  *
- * A slash command (input starting with `/`) navigates to the matching route;
- * any other input is sent as a chat message.
+ * A slash command (input starting with `/`) navigates to the matching route.
+ * Any other input starts a new conversation: we mint a client-side session id
+ * and navigate to `/sessions/:id`, handing the typed text to the Chat screen
+ * (which owns the `useChat` instance) so the first turn isn't lost to a remount.
  */
 export function Home() {
   const navigate = useNavigate();
 
-  const { messages, sendMessage, status, error, regenerate, clearError } = useChat({
-    transport: new DefaultChatTransport({ api: client.chat.$url().toString() }),
-  });
-
   const handleSubmit = (value: string) => {
     const text = value.trim();
+    if (!text) return;
     // A slash command is just the route path: navigate to it and let the router
     // resolve it (unknown paths fall through to the `*` NotFound screen).
     if (text.startsWith("/")) {
       navigate(text.toLowerCase());
       return;
     }
-    sendMessage({ text });
+    // The session id is client-generated; the server upserts it on first message.
+    const id = generateId();
+    navigate(ROUTES.session(id), { state: { initialText: text } });
   };
 
-  // Before the first message, keep the centred launcher look.
-  if (messages.length === 0) {
-    return (
-      <box flexGrow={1} flexDirection="column" alignItems="center" justifyContent="center" gap={2}>
-        <Logo />
-        <box width={64}>
-          <ChatTextarea onSubmit={handleSubmit} />
-        </box>
-      </box>
-    );
-  }
-
-  // Once a conversation starts, switch to the top-anchored chat shell.
   return (
-    <ChatLayout
-      input={<ChatTextarea onSubmit={handleSubmit} />}
-      banner={
-        status === "error" && error ? (
-          <ChatError message={error.message} onRetry={() => regenerate()} onDismiss={clearError} />
-        ) : null
-      }
-    >
-      {messages.flatMap(renderMessageParts)}
-      {status === "submitted" && <text fg={colors.muted}>…thinking</text>}
-    </ChatLayout>
+    <box flexGrow={1} flexDirection="column" alignItems="center" justifyContent="center" gap={2}>
+      <Logo />
+      <box width={64}>
+        <ChatTextarea onSubmit={handleSubmit} />
+      </box>
+    </box>
   );
 }
