@@ -34,11 +34,11 @@ export function Home() {
   };
 
   return (
-    <box flexGrow={1} flexDirection="column" alignItems="center" justifyContent="center" gap={2}>
-      <Logo />
-      <box width={64}>
-        <ChatTextarea modeId={modeId} onModeChange={setModeId} onSubmit={handleSubmit} />
+    <box flexGrow={1} flexDirection="column" justifyContent="center" gap={2} padding={1}>
+      <box alignItems="center">
+        <Logo />
       </box>
+      <ChatTextarea modeId={modeId} onModeChange={setModeId} onSubmit={handleSubmit} />
     </box>
   );
 }

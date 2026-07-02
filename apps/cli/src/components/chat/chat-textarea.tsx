@@ -43,7 +43,6 @@ export function ChatTextarea({
   onSubmit,
   placeholder = "Ask babal code anything…",
   focused = true,
-  rows = 3,
   modeId,
   onModeChange,
 }: ChatTextareaProps) {
@@ -65,21 +64,17 @@ export function ChatTextarea({
     setGeneration((g) => g + 1);
   };
 
+  // const borderColor = focused ? colors.accent : colors.muted;
+
   return (
     <box flexDirection="column" flexShrink={0}>
-      <box
-        border
-        borderStyle="rounded"
-        borderColor={focused ? colors.accent : colors.muted}
-        paddingLeft={1}
-        paddingRight={1}
-      >
+      <box border={["left"]} borderStyle="heavy" backgroundColor="#1E1E1E" paddingX={2} paddingY={1}>
         <textarea
           key={generation}
           ref={textareaRef}
           placeholder={placeholder}
           focused={focused}
-          height={rows}
+          height={2}
           wrapMode="word"
           textColor={colors.text}
           cursorColor={colors.accent}

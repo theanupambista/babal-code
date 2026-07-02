@@ -1,5 +1,7 @@
 /** Shared color palette for the CLI UI. */
 export const colors = {
+  /** App shell background. */
+  background: "#0A0A0A",
   /** Primary / accent — banner, focused borders, cursor. */
   accent: "#f05100",
   /** Default body text. */
