@@ -1,7 +1,7 @@
 import { readFile, stat } from "node:fs/promises";
 import { tool } from "ai";
 import { z } from "zod";
-import { resolveInWorkspace, toWorkspaceRelative, WorkspaceError } from "./workspace";
+import { resolveInWorkspace, toWorkspaceRelative, WorkspaceError } from "../workspace";
 
 /** Refuse to slurp anything larger than this into the model context. */
 const MAX_BYTES = 1_000_000;

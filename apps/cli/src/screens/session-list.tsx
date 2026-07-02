@@ -1,18 +1,9 @@
 import { useKeyboard } from "@opentui/react";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router";
-import { client } from "../lib/client";
+import { listSessions, type SessionSummary } from "../lib/session";
 import { ROUTES } from "../routes";
 import { colors } from "../theme";
-
-type SessionSummary = {
-  id: string;
-  title: string | null;
-  model: string | null;
-  createdAt: string;
-  updatedAt: string;
-  preview: string | null;
-};
 
 /** Compact "3m ago" / "2h ago" / "5d ago" label from an ISO timestamp. */
 function relativeTime(iso: string): string {
@@ -40,11 +31,9 @@ export function SessionList() {
 
   useEffect(() => {
     let cancelled = false;
-    void client.sessions
-      .$get()
-      .then((res) => res.json())
+    void listSessions()
       .then((data) => {
-        if (!cancelled) setSessions(data.sessions as SessionSummary[]);
+        if (!cancelled) setSessions(data);
       })
       .catch(() => {
         if (!cancelled) setSessions([]);

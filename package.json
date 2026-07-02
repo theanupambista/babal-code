@@ -8,10 +8,8 @@
     "packages/*"
   ],
   "scripts": {
-    "dev:server": "bun run --filter @babalcode/server dev",
-    "dev:cli": "bun run --cwd apps/cli dev",
-    "start:server": "bun run --filter @babalcode/server start",
-    "start:cli": "bun run --cwd apps/cli start",
+    "dev": "bun --watch run apps/cli/src/index.tsx",
+    "start": "bun run apps/cli/src/index.tsx",
     "typecheck": "bun run --filter '*' typecheck"
   },
   "devDependencies": {

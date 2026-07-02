@@ -1,9 +1,10 @@
 import { useChat } from "@ai-sdk/react";
-import { DefaultChatTransport, type UIMessage } from "ai";
+import type { UIMessage } from "ai";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router";
 import { ChatError, ChatLayout, ChatTextarea, renderMessageParts } from "../components/chat";
-import { client } from "../lib/client";
+import { loadMessages } from "../lib/session";
+import { InProcessTransport } from "../lib/transport";
 import { colors } from "../theme";
 
 /**
@@ -35,11 +36,9 @@ export function Chat() {
       return;
     }
     let cancelled = false;
-    void client.sessions[":id"].messages
-      .$get({ param: { id } })
-      .then((res) => res.json())
-      .then((data) => {
-        if (!cancelled) setInitialMessages(data.messages as unknown as UIMessage[]);
+    void loadMessages(id)
+      .then((messages) => {
+        if (!cancelled) setInitialMessages(messages);
       })
       .catch(() => {
         if (!cancelled) setInitialMessages([]);
@@ -78,13 +77,7 @@ function ChatView({
 }) {
   const navigate = useNavigate();
 
-  const transport = useMemo(
-    () =>
-      new DefaultChatTransport({
-        api: client.sessions[":id"].messages.$url({ param: { id } }).toString(),
-      }),
-    [id],
-  );
+  const transport = useMemo(() => new InProcessTransport(), []);
 
   const { messages, sendMessage, status, error, regenerate, clearError } = useChat({
     id,

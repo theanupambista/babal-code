@@ -1,7 +1,7 @@
 import { readFile, writeFile } from "node:fs/promises";
 import { tool } from "ai";
 import { z } from "zod";
-import { resolveInWorkspace, toWorkspaceRelative, WorkspaceError } from "./workspace";
+import { resolveInWorkspace, toWorkspaceRelative, WorkspaceError } from "../workspace";
 
 export const editFileTool = tool({
   description:

@@ -1,7 +1,7 @@
 import { readdir } from "node:fs/promises";
 import { tool } from "ai";
 import { z } from "zod";
-import { resolveInWorkspace, toWorkspaceRelative, WorkspaceError } from "./workspace";
+import { resolveInWorkspace, toWorkspaceRelative, WorkspaceError } from "../workspace";
 
 /** Cap the number of entries returned so a huge tree does not flood the context. */
 const MAX_ENTRIES = 500;

@@ -2,7 +2,7 @@ import { readFile, stat } from "node:fs/promises";
 import path from "node:path";
 import { tool } from "ai";
 import { z } from "zod";
-import { resolveInWorkspace, toWorkspaceRelative, WorkspaceError } from "./workspace";
+import { resolveInWorkspace, toWorkspaceRelative, WorkspaceError } from "../workspace";
 
 const MAX_MATCHES = 200;
 const MAX_FILE_BYTES = 1_000_000;

@@ -11,21 +11,20 @@ This is a **Bun**-first project. Use `bun` for everything (running, installing, 
 Run from the repo root:
 
 - `bun install` — install all workspace dependencies
-- `bun run dev:server` — run the server with file watching
-- `bun run dev:cli` — run the CLI with file watching
-- `bun run start:server` / `bun run start:cli` — run without watching
+- `bun run dev` — run the CLI with file watching (this is the whole app)
+- `bun run start` — run the CLI without watching
 - `bun run typecheck` — `tsc --noEmit` across every workspace (the only check that exists; there is no lint config and no test setup yet)
 
-Per-app scripts live in `apps/<name>/package.json` and can be run with `bun run --cwd apps/<name> <script>`.
+`bun run dev`/`start` intentionally launch the CLI **by path, without `--cwd`**, so `process.cwd()` stays the directory you invoke them from — that cwd *is* the agent's workspace root (see the engine's `workspace.ts`).
 
-The CLI is also exposed as a `babalcode` bin (`apps/cli/package.json`).
+The CLI is also exposed as a `babalcode` bin (`apps/cli/package.json`). It reads the model key from `GOOGLE_GENERATIVE_AI_API_KEY` at startup (bring-your-own-key) and exits if unset.
 
 ## Architecture
 
-Bun-workspace monorepo. Members are globbed from `apps/*` (see root `package.json` `workspaces`). Two independent apps share config but not code:
+Bun-workspace monorepo. Members are globbed from `apps/*` and `packages/*` (see root `package.json` `workspaces`). It is a **monolithic, single-process** coding agent — no HTTP server, no database:
 
-- **`apps/server`** (`@babalcode/server`) — a [Hono](https://hono.dev) HTTP app. `src/index.ts` exports the default `{ port, fetch }` object Bun's server expects; port comes from `PORT` env (default 3000). Routes are registered directly on the `Hono` instance.
-- **`apps/cli`** (`@babalcode/cli`) — a terminal UI built with [OpenTUI](https://github.com/sst/opentui) + React 19.
+- **`apps/cli`** (`@babalcode/cli`) — a terminal UI built with [OpenTUI](https://github.com/sst/opentui) + React 19, and the single process. It drives the agent **in-process** via a custom `ChatTransport` (`src/lib/transport.ts`) that calls the engine directly; `useChat` streams from it with no network hop.
+- **`packages/engine`** (`@babalcode/engine`) — the headless agent: the coding tools + workspace guardrail (`src/tools/`, `src/workspace.ts`), the `streamText` loop (`src/agent.ts` → `runAgent`), and Claude-Code-style JSONL session history under `~/.babalcode/projects/<hash>/` (`src/session/`). No UI, no HTTP. Add a tool by dropping `src/tools/<name>.ts` and adding one line to `src/tools/index.ts`.
 
 ### TypeScript config
 

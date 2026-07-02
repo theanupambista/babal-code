@@ -2,7 +2,7 @@ import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { tool } from "ai";
 import { z } from "zod";
-import { resolveInWorkspace, toWorkspaceRelative, WorkspaceError } from "./workspace";
+import { resolveInWorkspace, toWorkspaceRelative, WorkspaceError } from "../workspace";
 
 export const writeFileTool = tool({
   description:

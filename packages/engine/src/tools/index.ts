@@ -6,10 +6,10 @@ import { searchFilesTool } from "./search-files";
 import { writeFileTool } from "./write-file";
 
 /**
- * The coding-agent toolset, spread into `streamText`'s `tools` in the chat route.
+ * The coding-agent toolset, spread into `streamText`'s `tools` in the agent loop.
  * Each key becomes the `tool-<name>` UI part the CLI renders. To add a tool: create
- * `tools/<name>.ts` exporting a `tool(...)`, then add one line here — the route does
- * not change.
+ * `tools/<name>.ts` exporting a `tool(...)`, then add one line here — `agent.ts`
+ * does not change.
  */
 export const codingTools = {
   readFile: readFileTool,

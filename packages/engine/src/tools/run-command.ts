@@ -1,6 +1,6 @@
 import { tool } from "ai";
 import { z } from "zod";
-import { toWorkspaceRelative, WORKSPACE_ROOT } from "./workspace";
+import { toWorkspaceRelative, WORKSPACE_ROOT } from "../workspace";
 
 /** Truncate captured output so a chatty command does not flood the model context. */
 const MAX_OUTPUT = 30_000;

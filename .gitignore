@@ -7,3 +7,6 @@ debug.log
 !.env.example
 .DS_Store
 *.tsbuildinfo
+
+# Local session history (normally under ~/.babalcode; guard against in-repo dev writes)
+.babalcode/
