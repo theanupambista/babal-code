@@ -11,8 +11,20 @@ import {
 } from "ai";
 import { Hono } from "hono";
 import { z } from "zod";
+import { codingTools } from "../tools";
 
 const MODEL_ID = "gemini-2.5-flash";
+
+// Steers the model to behave like a coding agent: inspect before acting, use the
+// tools instead of guessing, and treat every path as workspace-relative.
+const SYSTEM_PROMPT = [
+  "You are a coding agent operating inside the user's current project directory (the workspace).",
+  "Use the provided tools to inspect and modify files rather than guessing their contents:",
+  "list directories to learn the layout, read files before editing them, and prefer editFile",
+  "for surgical changes over rewriting whole files with writeFile.",
+  "All file paths are relative to the workspace root; you cannot access anything outside it.",
+  "When a tool returns an `error`, read it and adjust — do not repeat the same failing call.",
+].join(" ");
 
 // Tools the model may call mid-turn. `execute` runs server-side; its result is
 // streamed back as a tool part (rendered by the CLI's `ToolMessage`). Keep these
@@ -36,6 +48,7 @@ const tools = {
       };
     },
   }),
+  ...codingTools,
 };
 
 // Loosely validates the shape `convertToModelMessages` needs. Parts are kept
@@ -195,11 +208,12 @@ export const sessionRoutes = new Hono()
 
     const result = streamText({
       model: google(MODEL_ID),
+      system: SYSTEM_PROMPT,
       messages: await convertToModelMessages(messages as UIMessage[]),
       tools,
-      // Without a stop condition the run ends after the tool call; `stepCountIs`
-      // lets the model take another step to turn the tool result into an answer.
-      stopWhen: stepCountIs(5),
+      // A coding turn chains many tool calls (list → read → edit → verify); without a
+      // stop condition the run ends after the first tool call. Cap the loop generously.
+      stopWhen: stepCountIs(25),
       // Gemini omits thinking tokens unless explicitly asked to include them.
       providerOptions: {
         google: { thinkingConfig: { includeThoughts: true } },
