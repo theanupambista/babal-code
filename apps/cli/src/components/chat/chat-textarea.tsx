@@ -1,9 +1,10 @@
 import type { TextareaRenderable } from "@opentui/core";
 import { useKeyboard } from "@opentui/react";
-import { getMode, getNextModeId } from "@babalcode/engine";
-import type { ModeId } from "@babalcode/engine";
-import { useRef, useState } from "react";
+import { getMode, getModelSelection, getNextModeId, PROVIDERS } from "@babalcode/engine";
+import type { ModeId, ProviderId } from "@babalcode/engine";
+import { useEffect, useRef, useState } from "react";
 import { colors } from "../../theme";
+import { EmptyBorder } from "../border";
 
 type ChatTextareaProps = {
   /** Called with the trimmed message and the active mode id when the user submits. */
@@ -11,8 +12,6 @@ type ChatTextareaProps = {
   placeholder?: string;
   /** Whether the textarea owns keyboard focus. */
   focused?: boolean;
-  /** Visible height of the input in rows. */
-  rows?: number;
   /** Active mode (controlled by the parent, which owns the state). */
   modeId: ModeId;
   /** Called when Tab/Shift+Tab cycles the mode. */
@@ -25,6 +24,14 @@ const KEY_BINDINGS = [
   { name: "return", shift: true, action: "newline" as const },
 ];
 
+/** Cap prompt width on wide terminals; still grows to fill narrower viewports. */
+const MAX_WIDTH = 100;
+
+function getModelLabel(providerId: ProviderId, modelId: string): string {
+  const match = PROVIDERS[providerId].models.find((m) => m.id === modelId);
+  return match?.label ?? modelId;
+}
+
 /**
  * Multi-line chat input, modelled on opencode's prompt.
  *
@@ -32,7 +39,8 @@ const KEY_BINDINGS = [
  * submit, then bump `generation` to remount it with an empty `initialValue`.
  *
  * `flexShrink={0}` keeps the fixed-height input from being squeezed to nothing
- * when it sits next to a `flexGrow` scrollback in the chat layout.
+ * when it sits next to a `flexGrow` scrollback in the chat layout. A max width
+ * keeps the prompt readable on wide terminals and centres it in the row.
  *
  * Displays the active mode in the footer and cycles it with Tab/Shift+Tab, but the
  * mode is a *controlled* prop — the parent owns the state so it can also drive the
@@ -48,6 +56,27 @@ export function ChatTextarea({
 }: ChatTextareaProps) {
   const textareaRef = useRef<TextareaRenderable>(null);
   const [generation, setGeneration] = useState(0);
+  const [modelLabel, setModelLabel] = useState<string | null>(null);
+  const [providerLabel, setProviderLabel] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    void getModelSelection()
+      .then(({ provider, model }) => {
+        if (cancelled) return;
+        setModelLabel(getModelLabel(provider, model));
+        setProviderLabel(PROVIDERS[provider].label);
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setModelLabel(null);
+          setProviderLabel(null);
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   // Tab cycles forward, Shift+Tab backward. Only the focused input reacts, so the
   // home and chat textareas don't both toggle (all useKeyboard handlers co-fire).
@@ -65,30 +94,48 @@ export function ChatTextarea({
   };
 
   // const borderColor = focused ? colors.accent : colors.muted;
+  const modeColor = modeId === "plan" ? colors.plan : colors.accent;
 
   return (
-    <box flexDirection="column" flexShrink={0}>
-      <box border={["left"]} borderStyle="heavy" backgroundColor="#1E1E1E" paddingX={2} paddingY={1}>
-        <textarea
-          key={generation}
-          ref={textareaRef}
-          placeholder={placeholder}
-          focused={focused}
-          height={2}
-          wrapMode="word"
-          textColor={colors.text}
-          cursorColor={colors.accent}
-          placeholderColor={colors.muted}
-          keyBindings={KEY_BINDINGS}
-          onSubmit={handleSubmit}
-        />
-      </box>
-      <box flexDirection="row" justifyContent="space-between" paddingLeft={1} paddingRight={1}>
-        <text>
-          <span fg={colors.accent}>◈ {getMode(modeId).label}</span>
-          <span fg={colors.muted}> · tab to switch · enter to send</span>
-        </text>
-        <text fg={colors.muted}>ctrl+c to exit</text>
+    <box flexShrink={0} alignItems="center" width="100%">
+      <box flexDirection="column" flexShrink={0} width="100%" maxWidth={MAX_WIDTH}>
+        <box flexDirection="row" flexShrink={0} width="100%">
+          <box border={["left"]} borderColor={modeColor} customBorderChars={{ ...EmptyBorder, vertical: "┃" }} />
+          <box
+            backgroundColor="#1E1E1E"
+            paddingX={3}
+            paddingY={1}
+            flexDirection="column"
+            flexGrow={1}
+          >
+            <textarea
+              key={generation}
+              ref={textareaRef}
+              placeholder={placeholder}
+              focused={focused}
+              height={2}
+              wrapMode="word"
+              textColor={colors.text}
+              cursorColor={colors.accent}
+              placeholderColor={colors.muted}
+              keyBindings={KEY_BINDINGS}
+              onSubmit={handleSubmit}
+            />
+            <box flexDirection="row" justifyContent="space-between">
+              <text>
+                <span fg={modeColor}>{getMode(modeId).label}</span>
+                {modelLabel && providerLabel ? (
+                  <>
+                    <span fg={colors.muted}> · </span>
+                    <span fg="#ffffff">{modelLabel}&nbsp;</span>
+                    <span fg="#808080">{providerLabel}</span>
+                  </>
+                ) : null}
+              </text>
+              <text fg={colors.muted}>ctrl+c to exit</text>
+            </box>
+          </box>
+        </box>
       </box>
     </box>
   );

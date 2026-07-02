@@ -2,8 +2,10 @@
 export const colors = {
   /** App shell background. */
   background: "#0A0A0A",
-  /** Primary / accent — banner, focused borders, cursor. */
+  /** Primary / accent — banner, focused borders, cursor, build mode. */
   accent: "#f05100",
+  /** Plan mode label in the prompt footer. */
+  plan: "#9ece6a",
   /** Default body text. */
   text: "#c0caf5",
   /** Secondary / muted text and unfocused borders. */
