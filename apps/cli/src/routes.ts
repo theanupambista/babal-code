@@ -11,4 +11,8 @@ export const ROUTES = {
   sessions: "/sessions",
   /** A conversation screen. The id is client-generated and used as the session id. */
   session: (id: string) => `/sessions/${id}`,
+  /** Model picker — choose the active model from the provider's catalog. */
+  model: "/model",
+  /** API-key entry — masked field; stores the key in the OS keychain. */
+  login: "/login",
 } as const;

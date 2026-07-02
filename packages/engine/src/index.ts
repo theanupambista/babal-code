@@ -7,3 +7,13 @@ export { runAgent } from "./agent";
 export { loadMessages, listSessions, type SessionSummary } from "./session/store";
 export { WORKSPACE_ROOT } from "./workspace";
 export { MODEL_ID } from "./constants";
+export {
+  PROVIDERS,
+  DEFAULT_PROVIDER,
+  DEFAULT_MODEL,
+  type ProviderId,
+  type ProviderInfo,
+  type ModelInfo,
+} from "./providers";
+export { getModelSelection, setModelSelection } from "./config";
+export { setApiKey, deleteApiKey, resolveApiKey, getStoredApiKey, hasApiKey } from "./credentials";

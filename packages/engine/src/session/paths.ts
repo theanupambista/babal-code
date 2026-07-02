@@ -3,8 +3,16 @@ import os from "node:os";
 import path from "node:path";
 import { WORKSPACE_ROOT } from "../workspace";
 
+/** Base directory for everything babalcode persists: `~/.babalcode`. */
+export const BABALCODE_DIR = path.join(os.homedir(), ".babalcode");
+
 /** Root of all persisted history, outside any project: `~/.babalcode/projects`. */
-const PROJECTS_ROOT = path.join(os.homedir(), ".babalcode", "projects");
+const PROJECTS_ROOT = path.join(BABALCODE_DIR, "projects");
+
+/** Global preferences file (default provider + model): `~/.babalcode/config.json`. */
+export function configFile(): string {
+  return path.join(BABALCODE_DIR, "config.json");
+}
 
 /**
  * Sessions are scoped to the workspace they were created in (like Claude Code),

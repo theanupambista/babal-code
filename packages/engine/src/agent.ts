@@ -1,4 +1,3 @@
-import { google } from "@ai-sdk/google";
 import {
   convertToModelMessages,
   generateId,
@@ -9,7 +8,9 @@ import {
   type UIMessageChunk,
 } from "ai";
 import { z } from "zod";
-import { MODEL_ID } from "./constants";
+import { getModelSelection } from "./config";
+import { resolveApiKey } from "./credentials";
+import { PROVIDERS } from "./providers";
 import { SYSTEM_PROMPT } from "./system-prompt";
 import { appendError, appendMessage } from "./session/store";
 import { codingTools } from "./tools";
@@ -61,8 +62,17 @@ export async function runAgent({
     void appendMessage(sessionId, lastMessage).catch(() => {});
   }
 
+  // Resolve the provider/model (from `/model` config) and key (env → keychain) per
+  // turn, so switching either via slash command takes effect on the next message
+  // with no restart. A rejected promise here surfaces as the CLI's error banner.
+  const { provider, model } = await getModelSelection();
+  const apiKey = resolveApiKey(provider);
+  if (!apiKey) {
+    throw new Error(`No API key for ${PROVIDERS[provider].label}. Run /login to add one.`);
+  }
+
   const result = streamText({
-    model: google(MODEL_ID),
+    model: PROVIDERS[provider].createModel(apiKey, model),
     system: SYSTEM_PROMPT,
     messages: await convertToModelMessages(messages),
     tools,
