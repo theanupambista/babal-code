@@ -88,6 +88,22 @@ async function persistMessage(
   });
 }
 
+/** First text snippet in a message's parts — a human label for the session list. */
+function previewFromParts(parts: unknown): string | null {
+  if (!Array.isArray(parts)) return null;
+  for (const part of parts) {
+    if (
+      typeof part === "object" &&
+      part !== null &&
+      (part as { type?: unknown }).type === "text" &&
+      typeof (part as { text?: unknown }).text === "string"
+    ) {
+      return (part as { text: string }).text;
+    }
+  }
+  return null;
+}
+
 /** Append a failure to the timeline at the point it occurred. */
 async function persistError(sessionId: string, error: unknown): Promise<void> {
   await prisma.entry.create({
@@ -110,6 +126,32 @@ async function persistError(sessionId: string, error: unknown): Promise<void> {
  * `routes/` and mount them the same way.
  */
 export const sessionRoutes = new Hono()
+  // List sessions, newest activity first, for the CLI's picker screen. Each entry
+  // carries a `preview` derived from its first user message so the list is
+  // human-readable without loading every timeline.
+  .get("/", async (c) => {
+    const sessions = await prisma.session.findMany({
+      orderBy: { updatedAt: "desc" },
+      select: {
+        id: true,
+        title: true,
+        model: true,
+        createdAt: true,
+        updatedAt: true,
+        entries: {
+          where: { type: "message", role: "user" },
+          orderBy: { seq: "asc" },
+          take: 1,
+          select: { parts: true },
+        },
+      },
+    });
+    const list = sessions.map(({ entries, ...session }) => ({
+      ...session,
+      preview: entries[0] ? previewFromParts(entries[0].parts) : null,
+    }));
+    return c.json({ sessions: list });
+  })
   // Read a session's timeline as `UIMessage[]`, ready to seed the CLI's `useChat`.
   // Only message entries are replayed — errors stay in the DB for the record but
   // `useChat` treats errors as transient/live-only, so they are dropped here.

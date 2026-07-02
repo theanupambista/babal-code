@@ -4,6 +4,7 @@ import { ROUTES } from "./routes";
 import { Chat } from "./screens/chat";
 import { Home } from "./screens/home";
 import { NotFound } from "./screens/not-found";
+import { SessionList } from "./screens/session-list";
 
 export const router = createMemoryRouter([
   {
@@ -11,6 +12,7 @@ export const router = createMemoryRouter([
     element: <RootLayout />,
     children: [
       { index: true, element: <Home /> },
+      { path: "sessions", element: <SessionList /> },
       { path: "sessions/:id", element: <Chat /> },
       { path: "*", element: <NotFound /> },
     ],
