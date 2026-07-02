@@ -3,42 +3,16 @@ import {
   generateId,
   stepCountIs,
   streamText,
-  tool,
   type UIMessage,
   type UIMessageChunk,
 } from "ai";
-import { z } from "zod";
 import { getModelSelection } from "./config";
 import { resolveApiKey } from "./credentials";
+import { getMode } from "./modes";
 import { PROVIDERS } from "./providers";
 import { SYSTEM_PROMPT } from "./system-prompt";
 import { appendError, appendMessage } from "./session/store";
 import { codingTools } from "./tools";
-
-// Tools the model may call mid-turn. `execute` runs in-process; its result is
-// streamed back as a tool part (rendered by the CLI's `ToolMessage`). The coding
-// tools come from the registry; `getCurrentTime` is a self-contained example.
-const tools = {
-  getCurrentTime: tool({
-    description: "Get the current date and time. Use when the user asks what time or date it is.",
-    inputSchema: z.object({
-      timeZone: z
-        .string()
-        .optional()
-        .describe("IANA time zone, e.g. 'America/New_York'. Defaults to UTC."),
-    }),
-    execute: async ({ timeZone }) => {
-      const now = new Date();
-      const zone = timeZone ?? "UTC";
-      return {
-        iso: now.toISOString(),
-        timeZone: zone,
-        formatted: now.toLocaleString("en-US", { timeZone: zone, timeZoneName: "short" }),
-      };
-    },
-  }),
-  ...codingTools,
-};
 
 /**
  * Run one agent turn in-process and return a UI message stream. This is the
@@ -52,9 +26,11 @@ const tools = {
 export async function runAgent({
   sessionId,
   messages,
+  mode,
 }: {
   sessionId: string;
   messages: UIMessage[];
+  mode: string;
 }): Promise<ReadableStream<UIMessageChunk>> {
   // Record the just-sent user message up front so it is kept even if the turn fails.
   const lastMessage = messages[messages.length - 1];
@@ -68,14 +44,31 @@ export async function runAgent({
   const { provider, model } = await getModelSelection();
   const apiKey = resolveApiKey(provider);
   if (!apiKey) {
-    throw new Error(`No API key for ${PROVIDERS[provider].label}. Run /login to add one.`);
+    throw new Error(
+      `No API key for ${PROVIDERS[provider].label}. Run /login to add one.`,
+    );
   }
+
+  // Resolve the active mode from the caller-supplied id. A mode injects extra system
+  // instructions and restricts the toolset to its allowlist; "all" = every tool.
+  const activeMode = getMode(mode);
+  const system = activeMode.instructions
+    ? `${SYSTEM_PROMPT}\n\n${activeMode.instructions}`
+    : SYSTEM_PROMPT;
+  const activeTools =
+    activeMode.tools === "all"
+      ? codingTools
+      : Object.fromEntries(
+          Object.entries(codingTools).filter(([name]) =>
+            (activeMode.tools as readonly string[]).includes(name),
+          ),
+        );
 
   const result = streamText({
     model: PROVIDERS[provider].createModel(apiKey, model),
-    system: SYSTEM_PROMPT,
+    system,
     messages: await convertToModelMessages(messages),
-    tools,
+    tools: activeTools,
     // A coding turn chains many tool calls (list → read → edit → verify); without a
     // stop condition the run ends after the first tool call. Cap the loop generously.
     stopWhen: stepCountIs(25),

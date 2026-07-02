@@ -1,4 +1,6 @@
 import { useChat } from "@ai-sdk/react";
+import { DEFAULT_MODE_ID, isModeId } from "@babalcode/engine";
+import type { ModeId } from "@babalcode/engine";
 import type { UIMessage } from "ai";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router";
@@ -24,7 +26,13 @@ import { colors } from "../theme";
 export function Chat() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const initialText = useLocation().state?.initialText as string | undefined;
+  const locationState = useLocation().state as
+    | { initialText?: string; initialModeId?: string }
+    | undefined;
+  const initialText = locationState?.initialText;
+  // defaults to `DEFAULT_MODE_ID` (e.g. a resumed session carries no mode).
+  const rawModeId = locationState?.initialModeId;
+  const initialModeId: ModeId | undefined = isModeId(rawModeId) ? rawModeId : undefined;
 
   const [initialMessages, setInitialMessages] = useState<UIMessage[] | null>(null);
 
@@ -62,7 +70,13 @@ export function Chat() {
   }
 
   return (
-    <ChatView key={id} id={id} initialMessages={initialMessages} initialText={initialText} />
+    <ChatView
+      key={id}
+      id={id}
+      initialMessages={initialMessages}
+      initialText={initialText}
+      initialModeId={initialModeId}
+    />
   );
 }
 
@@ -70,12 +84,16 @@ function ChatView({
   id,
   initialMessages,
   initialText,
+  initialModeId,
 }: {
   id: string;
   initialMessages: UIMessage[];
   initialText?: string;
+  initialModeId?: ModeId;
 }) {
   const navigate = useNavigate();
+
+  const [modeId, setModeId] = useState<ModeId>(initialModeId ?? DEFAULT_MODE_ID);
 
   const transport = useMemo(() => new InProcessTransport(), []);
 
@@ -85,31 +103,37 @@ function ChatView({
     transport,
   });
 
-  // Fire the first message exactly once for a freshly created session.
+  // Fire the first message exactly once for a freshly created session, in the active mode.
   const sent = useRef(false);
   useEffect(() => {
     if (initialText && !sent.current) {
       sent.current = true;
-      sendMessage({ text: initialText });
+      sendMessage({ text: initialText }, { body: { modeId } });
     }
-  }, [initialText, sendMessage]);
+  }, [initialText, modeId, sendMessage]);
 
-  const handleSubmit = (value: string) => {
+  const handleSubmit = (value: string, mode: ModeId) => {
     const text = value.trim();
     if (!text) return;
     if (text.startsWith("/")) {
       navigate(text.toLowerCase());
       return;
     }
-    sendMessage({ text });
+    sendMessage({ text }, { body: { modeId: mode } });
   };
 
   return (
     <ChatLayout
-      input={<ChatTextarea onSubmit={handleSubmit} />}
+      input={
+        <ChatTextarea modeId={modeId} onModeChange={setModeId} onSubmit={handleSubmit} />
+      }
       banner={
         status === "error" && error ? (
-          <ChatError message={error.message} onRetry={() => regenerate()} onDismiss={clearError} />
+          <ChatError
+            message={error.message}
+            onRetry={() => regenerate({ body: { modeId } })}
+            onDismiss={clearError}
+          />
         ) : null
       }
     >

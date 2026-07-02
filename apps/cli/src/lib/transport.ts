@@ -1,4 +1,5 @@
-import { runAgent } from "@babalcode/engine";
+import { DEFAULT_MODE_ID, isModeId, runAgent } from "@babalcode/engine";
+import type { ModeId } from "@babalcode/engine";
 import type { ChatTransport, UIMessage, UIMessageChunk } from "ai";
 
 /**
@@ -11,10 +12,17 @@ export class InProcessTransport implements ChatTransport<UIMessage> {
   async sendMessages({
     chatId,
     messages,
+    body,
   }: Parameters<ChatTransport<UIMessage>["sendMessages"]>[0]): Promise<
     ReadableStream<UIMessageChunk>
   > {
-    return runAgent({ sessionId: chatId, messages });
+    // Mode is client-owned: the CLI sends it via `sendMessage({ text }, { body: { modeId } })`
+    // on every turn. `body` crosses the transport boundary untyped, so validate the id with the
+    // engine's `isModeId` guard and fall back to the CLI's own default for a missing/unknown one
+    // rather than letting it slip through to the engine.
+    const rawModeId = (body as { modeId?: unknown } | undefined)?.modeId;
+    const modeId: ModeId = isModeId(rawModeId) ? rawModeId : DEFAULT_MODE_ID;
+    return runAgent({ sessionId: chatId, messages, mode: modeId });
   }
 
   // No persistent server-side stream exists to resume in-process.

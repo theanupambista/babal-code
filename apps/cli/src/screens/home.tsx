@@ -1,4 +1,7 @@
 import { generateId } from "ai";
+import { DEFAULT_MODE_ID } from "@babalcode/engine";
+import type { ModeId } from "@babalcode/engine";
+import { useState } from "react";
 import { useNavigate } from "react-router";
 import { ChatTextarea } from "../components/chat";
 import { Logo } from "../components/logo";
@@ -14,8 +17,9 @@ import { ROUTES } from "../routes";
  */
 export function Home() {
   const navigate = useNavigate();
+  const [modeId, setModeId] = useState<ModeId>(DEFAULT_MODE_ID);
 
-  const handleSubmit = (value: string) => {
+  const handleSubmit = (value: string, modeId: ModeId) => {
     const text = value.trim();
     if (!text) return;
     // A slash command is just the route path: navigate to it and let the router
@@ -24,16 +28,16 @@ export function Home() {
       navigate(text.toLowerCase());
       return;
     }
-    // The session id is client-generated; the server upserts it on first message.
+    // Carry the chosen mode so the Chat screen's first turn runs in it.
     const id = generateId();
-    navigate(ROUTES.session(id), { state: { initialText: text } });
+    navigate(ROUTES.session(id), { state: { initialText: text, initialModeId: modeId } });
   };
 
   return (
     <box flexGrow={1} flexDirection="column" alignItems="center" justifyContent="center" gap={2}>
       <Logo />
       <box width={64}>
-        <ChatTextarea onSubmit={handleSubmit} />
+        <ChatTextarea modeId={modeId} onModeChange={setModeId} onSubmit={handleSubmit} />
       </box>
     </box>
   );

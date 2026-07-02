@@ -16,4 +16,13 @@ export {
   type ModelInfo,
 } from "./providers";
 export { getModelSelection, setModelSelection } from "./config";
+export {
+  MODES,
+  DEFAULT_MODE_ID,
+  getMode,
+  getNextModeId,
+  isModeId,
+  type Mode,
+  type ModeId,
+} from "./modes";
 export { setApiKey, deleteApiKey, resolveApiKey, getStoredApiKey, hasApiKey } from "./credentials";
