@@ -10,7 +10,7 @@ import { getModelSelection } from "./config";
 import { resolveApiKey } from "./credentials";
 import { getMode } from "./modes";
 import { PROVIDERS, resolveLanguageModel } from "./providers";
-import { SYSTEM_PROMPT } from "./system-prompt";
+import { getSystemPrompt } from "./prompts";
 import { appendError, appendMessage } from "./session/store";
 import { codingTools } from "./tools";
 
@@ -53,9 +53,6 @@ export async function runAgent({
   // Resolve the active mode from the caller-supplied id. A mode injects extra system
   // instructions and restricts the toolset to its allowlist; "all" = every tool.
   const activeMode = getMode(mode);
-  const system = activeMode.instructions
-    ? `${SYSTEM_PROMPT}\n\n${activeMode.instructions}`
-    : SYSTEM_PROMPT;
   const activeTools =
     activeMode.tools === "all"
       ? codingTools
@@ -64,6 +61,13 @@ export async function runAgent({
             (activeMode.tools as readonly string[]).includes(name),
           ),
         );
+
+  const basePrompt = getSystemPrompt({
+    enabledTools: new Set(Object.keys(activeTools)),
+  });
+  const system = activeMode.instructions
+    ? `${basePrompt}\n\n${activeMode.instructions}`
+    : basePrompt;
 
   const result = streamText({
     model: languageModel,

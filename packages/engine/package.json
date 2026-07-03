@@ -14,6 +14,7 @@
     "@ai-sdk/openai-compatible": "^1.0.32",
     "@napi-rs/keyring": "^1.3.0",
     "ai": "^7.0.9",
+    "gpt-tokenizer": "^2.9.0",
     "zod": "^4.4.3"
   }
 }

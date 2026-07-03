@@ -17,7 +17,7 @@ export type Mode = {
   id: ModeId;
   label: string; // footer display, e.g. "Build"
   description: string; // one-liner (future /mode picker screen)
-  instructions: string; // appended to SYSTEM_PROMPT ("" = base prompt only)
+  instructions: string; // appended to the base system prompt ("" = base only)
   /** Allowed tools: "all" = every tool, or an explicit allowlist (default-deny). */
   tools: "all" | readonly ToolName[];
 };
@@ -28,7 +28,7 @@ export const MODES: readonly Mode[] = [
     id: "build",
     label: "Build",
     description: "Full access — read, write, edit, and run commands.",
-    instructions: "", // base SYSTEM_PROMPT already describes the build behaviour
+    instructions: "", // base system prompt already describes build behaviour
     tools: "all",
   },
   {
@@ -41,7 +41,7 @@ export const MODES: readonly Mode[] = [
       "(you cannot write files, edit files, or run commands). Investigate thoroughly, then " +
       "present a clear, step-by-step implementation plan for the user to review and approve. " +
       "If the user asks you to make changes, explain that they must switch to Build mode (Tab).",
-    tools: ["readFile", "listDirectory", "searchFiles"],
+    tools: ["readFile", "listDirectory", "searchFiles", "glob"],
   },
 ] as const;
 

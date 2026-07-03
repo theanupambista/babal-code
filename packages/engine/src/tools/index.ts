@@ -1,4 +1,5 @@
 import { editFileTool } from "./edit-file";
+import { globTool } from "./glob";
 import { listDirectoryTool } from "./list-directory";
 import { readFileTool } from "./read-file";
 import { runCommandTool } from "./run-command";
@@ -17,5 +18,6 @@ export const codingTools = {
   editFile: editFileTool,
   listDirectory: listDirectoryTool,
   searchFiles: searchFilesTool,
+  glob: globTool,
   runCommand: runCommandTool,
 };
