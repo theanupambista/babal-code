@@ -9,6 +9,7 @@ import {
   ToolMessage,
   UserMessage,
 } from "./chat-message";
+import { formatToolBody, formatToolTitle } from "./tool-format";
 
 /**
  * Maps a UI message's parts to presentational chat components — the single place
@@ -44,12 +45,32 @@ export function renderMessageParts(message: UIMessage): ReactNode[] {
 
     // Covers both typed (`tool-${name}`) and `dynamic-tool` parts.
     if (isToolUIPart(part)) {
-      // Property access is state-gated: only read output/error where they exist.
-      let detail: ReactNode;
-      if (part.state === "output-error") detail = part.errorText;
-      else if (part.state === "output-available") detail = JSON.stringify(part.output);
+      const name = getToolName(part);
+      const title = formatToolTitle(name, part.input);
 
-      return <ToolMessage key={key} name={getToolName(part)} state={part.state} detail={detail} />;
+      // Property access is state-gated: only read output/error where they exist.
+      // The engine tools also report errors as normal output, so `formatToolBody`
+      // flags those failures even though the state is `output-available`.
+      let detail: string | undefined;
+      let failed = false;
+      if (part.state === "output-error") {
+        detail = part.errorText;
+        failed = true;
+      } else if (part.state === "output-available") {
+        ({ body: detail, failed } = formatToolBody(name, part.output));
+      }
+
+      return (
+        <ToolMessage
+          key={key}
+          toolId={key}
+          name={name}
+          state={part.state}
+          title={title}
+          detail={detail}
+          failed={failed}
+        />
+      );
     }
 
     return null;

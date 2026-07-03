@@ -1,10 +1,18 @@
 import { useChat } from "@ai-sdk/react";
+import type { ScrollBoxRenderable } from "@opentui/core";
+import { useKeyboard } from "@opentui/react";
 import { DEFAULT_MODE_ID, isModeId } from "@babalcode/engine";
 import type { ModeId } from "@babalcode/engine";
-import type { UIMessage } from "ai";
+import { isToolUIPart, type UIMessage } from "ai";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router";
-import { ChatError, ChatLayout, ChatTextarea, renderMessageParts } from "../components/chat";
+import {
+  ChatError,
+  ChatLayout,
+  ChatTextarea,
+  renderMessageParts,
+  ToolSelectionContext,
+} from "../components/chat";
 import { loadMessages } from "../lib/session";
 import { InProcessTransport } from "../lib/transport";
 import { colors } from "../theme";
@@ -103,6 +111,55 @@ function ChatView({
     transport,
   });
 
+  // Per-item tool-call navigation: `selectedId` highlights one call, `expandedIds`
+  // holds the calls whose full output is shown. `toolIds` is the ordered list of
+  // navigable calls, keyed the same way `renderMessageParts` keys its parts.
+  const scrollRef = useRef<ScrollBoxRenderable>(null);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [expandedIds, setExpandedIds] = useState<ReadonlySet<string>>(() => new Set());
+
+  const toolIds = useMemo(
+    () =>
+      messages.flatMap((m) =>
+        m.parts.flatMap((part, index) => (isToolUIPart(part) ? [`${m.id}-${index}`] : [])),
+      ),
+    [messages],
+  );
+
+  // ctrl+↑/↓ moves the highlight, ctrl+r expands the selected call. ctrl-modified
+  // keys are used so plain arrows stay with the textarea cursor and scrollbox
+  // scroll. `useKeyboard` runs the latest closure, so `selectedId` is never stale.
+  useKeyboard((key) => {
+    if (!key.ctrl) return;
+    if (key.name === "up" || key.name === "down") {
+      setSelectedId((cur) => {
+        if (toolIds.length === 0) return cur;
+        const idx = cur ? toolIds.indexOf(cur) : -1;
+        const target =
+          idx === -1
+            ? key.name === "up"
+              ? toolIds.length - 1
+              : 0
+            : key.name === "up"
+              ? Math.max(0, idx - 1)
+              : Math.min(toolIds.length - 1, idx + 1);
+        return toolIds[target] ?? cur;
+      });
+    } else if (key.name === "r" && selectedId) {
+      setExpandedIds((prev) => {
+        const next = new Set(prev);
+        if (next.has(selectedId)) next.delete(selectedId);
+        else next.add(selectedId);
+        return next;
+      });
+    }
+  });
+
+  // Scroll the newly selected call into view (nearest alignment).
+  useEffect(() => {
+    if (selectedId) scrollRef.current?.scrollChildIntoView(selectedId);
+  }, [selectedId]);
+
   // Fire the first message exactly once for a freshly created session, in the active mode.
   const sent = useRef(false);
   useEffect(() => {
@@ -124,6 +181,7 @@ function ChatView({
 
   return (
     <ChatLayout
+      scrollRef={scrollRef}
       input={
         <ChatTextarea modeId={modeId} onModeChange={setModeId} onSubmit={handleSubmit} />
       }
@@ -137,7 +195,9 @@ function ChatView({
         ) : null
       }
     >
-      {messages.flatMap(renderMessageParts)}
+      <ToolSelectionContext.Provider value={{ selectedId, expandedIds }}>
+        {messages.flatMap(renderMessageParts)}
+      </ToolSelectionContext.Provider>
       {status === "submitted" && <text fg={colors.muted}>…thinking</text>}
     </ChatLayout>
   );

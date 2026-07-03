@@ -1,4 +1,5 @@
-import type { ReactNode } from "react";
+import type { ScrollBoxRenderable } from "@opentui/core";
+import type { ReactNode, RefObject } from "react";
 import { ChatMessages } from "./chat-messages";
 
 /** Cap chat column width on wide terminals; still grows to fill narrower viewports. */
@@ -11,6 +12,8 @@ type ChatLayoutProps = {
   input: ReactNode;
   /** Optional element docked between the history and input (e.g. an error banner). */
   banner?: ReactNode;
+  /** Forwarded to the scrollbox for `scrollChildIntoView`. */
+  scrollRef?: RefObject<ScrollBoxRenderable | null>;
 };
 
 /**
@@ -18,7 +21,7 @@ type ChatLayoutProps = {
  * input beneath it. The history flex-grows; the banner and input keep their own
  * height (see `ChatTextarea`'s `flexShrink={0}`).
  */
-export function ChatLayout({ children, input, banner }: ChatLayoutProps) {
+export function ChatLayout({ children, input, banner, scrollRef }: ChatLayoutProps) {
   return (
     <box flexGrow={1} flexDirection="column" padding={1} alignItems="center" width="100%">
       <box
@@ -28,7 +31,7 @@ export function ChatLayout({ children, input, banner }: ChatLayoutProps) {
         maxWidth={CHAT_MAX_WIDTH}
         gap={1}
       >
-        <ChatMessages>{children}</ChatMessages>
+        <ChatMessages scrollRef={scrollRef}>{children}</ChatMessages>
         {banner}
         {input}
       </box>

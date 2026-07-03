@@ -1,30 +1,12 @@
 import type { ToolUIPart } from "ai";
 import type { ReactNode } from "react";
+import { useContext } from "react";
 import { colors } from "../../theme";
 import { EmptyBorder } from "../border";
+import { ToolSelectionContext } from "./tool-selection";
 
-type ChatMessageProps = {
-  /** Short role label shown above the body (e.g. "you", "babal"). */
-  label: string;
-  /** Color of the role label. Defaults to muted. */
-  labelColor?: string;
-  /** Message body. Must be text-compatible nodes (strings, <span>, <em>…). */
-  children: ReactNode;
-};
-
-/**
- * Base chat bubble: a role label stacked above the message body. Every role
- * variant below is a thin wrapper that fixes the label and its color, so all
- * spacing/typography stays in one place.
- */
-export function ChatMessage({ label, labelColor = colors.muted, children }: ChatMessageProps) {
-  return (
-    <box flexDirection="column">
-      <text fg={labelColor}>{label}</text>
-      <text fg={colors.text}>{children}</text>
-    </box>
-  );
-}
+/** Collapsed tool output shows at most this many lines before truncating. */
+const TOOL_BODY_CAP = 8;
 
 /**
  * A message authored by the human — styled like the prompt input panel. The
@@ -58,9 +40,38 @@ export function UserMessage({
   );
 }
 
-/** A message authored by the assistant — plain text, no label. */
+/** A message authored by the assistant — plain text, no label, no border. */
 export function AssistantMessage({ children }: { children: ReactNode }) {
   return <text fg={colors.text}>{children}</text>;
+}
+
+/**
+ * A colored left bar next to indented content — the display used by the prompt
+ * input and user messages. Tool calls and reasoning reuse it so they read as
+ * secondary annotations, keeping the eye on the plain assistant text.
+ */
+function SidebarMessage({
+  children,
+  color = colors.muted,
+  id,
+}: {
+  children: ReactNode;
+  color?: string;
+  /** Renderable id, so the scrollbox can `scrollChildIntoView` this message. */
+  id?: string;
+}) {
+  return (
+    <box id={id} flexDirection="row" flexShrink={0} width="100%">
+      <box
+        border={["left"]}
+        borderColor={color}
+        customBorderChars={{ ...EmptyBorder, vertical: "┃" }}
+      />
+      <box paddingX={2} flexDirection="column" flexGrow={1}>
+        {children}
+      </box>
+    </box>
+  );
 }
 
 /** Human-readable status for each tool-call state. */
@@ -75,23 +86,57 @@ const TOOL_STATUS: Record<ToolUIPart["state"], string> = {
 };
 
 /**
- * A tool call, labelled with the tool name and a status derived from its state.
- * `detail` is the output/error body; it turns red when the call failed.
+ * A tool call: a header (`name · primary-arg · status`) above a compact summary,
+ * behind a dimmed left bar so it reads as a secondary annotation next to the
+ * assistant's plain text. The bar and header brighten to the accent color when
+ * this call is selected (ctrl+↑/↓ in the chat screen).
+ *
+ * `detail` is the summary body. Collapsed calls show at most `TOOL_BODY_CAP`
+ * lines with a `… +N more` hint; expanding the selected call (ctrl+r) shows the
+ * whole thing. `failed` turns the bar and body red — note the engine tools
+ * report errors as normal output, so failures can arrive in a non-error state.
  */
 export function ToolMessage({
+  toolId,
   name,
   state,
+  title,
   detail,
+  failed = false,
 }: {
+  toolId: string;
   name: string;
   state: ToolUIPart["state"];
-  detail?: ReactNode;
+  title?: string;
+  detail?: string;
+  failed?: boolean;
 }) {
-  const failed = state === "output-error";
+  const { selectedId, expandedIds } = useContext(ToolSelectionContext);
+  const selected = selectedId === toolId;
+  const expanded = expandedIds.has(toolId);
+
+  const barColor = failed ? colors.danger : selected ? colors.accent : colors.muted;
+  const headerColor = selected ? colors.accent : colors.muted;
+  const bodyColor = failed ? colors.danger : colors.muted;
+
+  const header = title
+    ? `${name} · ${title} · ${TOOL_STATUS[state]}`
+    : `${name} · ${TOOL_STATUS[state]}`;
+
+  const lines = detail ? detail.split("\n") : [];
+  const hidden = !expanded && lines.length > TOOL_BODY_CAP ? lines.length - TOOL_BODY_CAP : 0;
+  const shown = hidden ? lines.slice(0, TOOL_BODY_CAP) : lines;
+
   return (
-    <ChatMessage label={`tool · ${name} · ${TOOL_STATUS[state]}`}>
-      <span fg={failed ? colors.danger : colors.muted}>{detail ?? " "}</span>
-    </ChatMessage>
+    <SidebarMessage color={barColor} id={toolId}>
+      <text fg={headerColor}>{header}</text>
+      {shown.length > 0 && <text fg={bodyColor}>{shown.join("\n")}</text>}
+      {hidden > 0 && (
+        <text fg={colors.muted}>
+          … +{hidden} more {hidden === 1 ? "line" : "lines"} (ctrl+r to expand)
+        </text>
+      )}
+    </SidebarMessage>
   );
 }
 
@@ -100,13 +145,19 @@ export function StepDivider() {
   return <box border={["top"]} borderStyle="single" borderColor={colors.muted} />;
 }
 
-/** The assistant's intermediate reasoning, rendered muted and italic. */
+/**
+ * The assistant's intermediate reasoning — dimmed and italic behind a muted left
+ * bar, so it stays visually subordinate to the plain assistant text.
+ */
 export function ReasoningMessage({ children }: { children: ReactNode }) {
   return (
-    <ChatMessage label="reasoning">
-      <em>
-        <span fg={colors.muted}>{children}</span>
-      </em>
-    </ChatMessage>
+    <SidebarMessage color={colors.muted}>
+      <text fg={colors.muted}>reasoning</text>
+      <text fg={colors.muted}>
+        <em>
+          <span fg={colors.muted}>{children}</span>
+        </em>
+      </text>
+    </SidebarMessage>
   );
 }
