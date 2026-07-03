@@ -5,6 +5,7 @@ import type { ModeId } from "@babalcode/engine";
 import { useEffect, useRef, useState } from "react";
 import { colors, modeColor as modeColorFor } from "../../theme";
 import { EmptyBorder } from "../border";
+import { BAR_CONTENT_PADDING } from "./chat-message";
 
 type ChatTextareaProps = {
   /** Called with the trimmed message and the active mode id when the user submits. */
@@ -94,7 +95,7 @@ export function ChatTextarea({
       <box border={["left"]} borderColor={modeColor} customBorderChars={{ ...EmptyBorder, vertical: "┃" }} />
       <box
         backgroundColor={colors.panel}
-        paddingX={3}
+        paddingX={BAR_CONTENT_PADDING}
         paddingY={1}
         flexDirection="column"
         flexGrow={1}

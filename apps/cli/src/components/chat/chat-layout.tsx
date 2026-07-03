@@ -3,7 +3,7 @@ import type { ReactNode, RefObject } from "react";
 import { ChatMessages } from "./chat-messages";
 
 /** Cap chat column width on wide terminals; still grows to fill narrower viewports. */
-export const CHAT_MAX_WIDTH = 100;
+export const CHAT_MAX_WIDTH = 120;
 
 type ChatLayoutProps = {
   /** Message history — typically a list of `*Message` components. */
