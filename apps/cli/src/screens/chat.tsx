@@ -10,6 +10,8 @@ import {
   ChatError,
   ChatLayout,
   ChatTextarea,
+  getChatBusyLabel,
+  isChatBusy,
   PermissionPrompt,
   renderMessageParts,
   ToolSelectionContext,
@@ -196,6 +198,7 @@ function ChatView({
   }, [initialText, modeId, sendMessage]);
 
   const handleSubmit = (value: string, mode: ModeId) => {
+    if (isChatBusy(status)) return;
     const text = value.trim();
     if (!text) return;
     if (text.startsWith("/")) {
@@ -204,6 +207,8 @@ function ChatView({
     }
     sendMessage({ text, metadata: { modeId: mode } }, { body: { modeId: mode } });
   };
+
+  const busyLabel = getChatBusyLabel(status, messages);
 
   return (
     <ChatLayout
@@ -241,7 +246,11 @@ function ChatView({
       <ToolSelectionContext.Provider value={{ selectedId, expandedIds }}>
         {messages.flatMap(renderMessageParts)}
       </ToolSelectionContext.Provider>
-      {status === "submitted" && <text fg={colors.muted}>…thinking</text>}
+      {busyLabel && (
+        <text fg={colors.muted} paddingLeft={4}>
+          {busyLabel}
+        </text>
+      )}
     </ChatLayout>
   );
 }

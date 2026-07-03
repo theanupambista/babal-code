@@ -1,3 +1,4 @@
+export { getChatBusyLabel, isChatBusy } from "./chat-status";
 export { ChatError } from "./chat-error";
 export { PermissionPrompt } from "./permission-prompt";
 export { CHAT_MAX_WIDTH, ChatLayout } from "./chat-layout";
