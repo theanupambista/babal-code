@@ -3,7 +3,7 @@ import { useKeyboard } from "@opentui/react";
 import { getMode, getModelDisplayLabel, getModelSelection, getNextModeId } from "@babalcode/engine";
 import type { ModeId } from "@babalcode/engine";
 import { useEffect, useRef, useState } from "react";
-import { colors } from "../../theme";
+import { colors, modeColor as modeColorFor } from "../../theme";
 import { EmptyBorder } from "../border";
 
 type ChatTextareaProps = {
@@ -87,7 +87,7 @@ export function ChatTextarea({
   };
 
   // const borderColor = focused ? colors.accent : colors.muted;
-  const modeColor = modeId === "plan" ? colors.plan : colors.accent;
+  const modeColor = modeColorFor(modeId);
 
   return (
     <box flexShrink={0} flexDirection="row" width="100%">

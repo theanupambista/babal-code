@@ -15,3 +15,8 @@ export const colors = {
   /** Failures — error banner and failed tool calls. */
   danger: "#f7768e",
 } as const;
+
+/** The accent color for a mode — used by the prompt input and user messages. */
+export function modeColor(modeId: string): string {
+  return modeId === "plan" ? colors.plan : colors.accent;
+}

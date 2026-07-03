@@ -108,7 +108,7 @@ function ChatView({
   useEffect(() => {
     if (initialText && !sent.current) {
       sent.current = true;
-      sendMessage({ text: initialText }, { body: { modeId } });
+      sendMessage({ text: initialText, metadata: { modeId } }, { body: { modeId } });
     }
   }, [initialText, modeId, sendMessage]);
 
@@ -119,7 +119,7 @@ function ChatView({
       navigate(text.toLowerCase());
       return;
     }
-    sendMessage({ text }, { body: { modeId: mode } });
+    sendMessage({ text, metadata: { modeId: mode } }, { body: { modeId: mode } });
   };
 
   return (

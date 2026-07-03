@@ -26,34 +26,41 @@ export function ChatMessage({ label, labelColor = colors.muted, children }: Chat
   );
 }
 
-/** A message authored by the human — styled like the prompt input panel. */
-export function UserMessage({ children }: { children: ReactNode }) {
+/**
+ * A message authored by the human — styled like the prompt input panel. The
+ * colored left bar (no label) marks it as user-sent; `color` tints that bar to
+ * the mode the message was sent in.
+ */
+export function UserMessage({
+  children,
+  color = colors.accent,
+}: {
+  children: ReactNode;
+  color?: string;
+}) {
   return (
-    <box flexDirection="column">
-      <text fg={colors.accent}>you</text>
-      <box flexDirection="row" flexShrink={0} width="100%">
-        <box
-          border={["left"]}
-          borderColor={colors.accent}
-          customBorderChars={{ ...EmptyBorder, vertical: "┃" }}
-        />
-        <box
-          backgroundColor={colors.panel}
-          paddingX={3}
-          paddingY={1}
-          flexDirection="column"
-          flexGrow={1}
-        >
-          <text fg={colors.text}>{children}</text>
-        </box>
+    <box flexDirection="row" flexShrink={0} width="100%">
+      <box
+        border={["left"]}
+        borderColor={color}
+        customBorderChars={{ ...EmptyBorder, vertical: "┃" }}
+      />
+      <box
+        backgroundColor={colors.panel}
+        paddingX={3}
+        paddingY={1}
+        flexDirection="column"
+        flexGrow={1}
+      >
+        <text fg={colors.text}>{children}</text>
       </box>
     </box>
   );
 }
 
-/** A message authored by the assistant. */
+/** A message authored by the assistant — plain text, no label. */
 export function AssistantMessage({ children }: { children: ReactNode }) {
-  return <ChatMessage label="babal">{children}</ChatMessage>;
+  return <text fg={colors.text}>{children}</text>;
 }
 
 /** Human-readable status for each tool-call state. */

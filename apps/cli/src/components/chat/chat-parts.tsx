@@ -1,5 +1,7 @@
+import { DEFAULT_MODE_ID, isModeId } from "@babalcode/engine";
 import { getToolName, isToolUIPart, type UIMessage } from "ai";
 import type { ReactNode } from "react";
+import { modeColor } from "../../theme";
 import {
   AssistantMessage,
   ReasoningMessage,
@@ -14,12 +16,19 @@ import {
  * render nothing; add a branch here when the backend starts producing them.
  */
 export function renderMessageParts(message: UIMessage): ReactNode[] {
+  // The mode a user message was sent in rides along as message metadata; tint its
+  // border/label with that mode's color (falling back to the default for older logs).
+  const rawModeId = (message.metadata as { modeId?: unknown } | undefined)?.modeId;
+  const userColor = modeColor(isModeId(rawModeId) ? rawModeId : DEFAULT_MODE_ID);
+
   return message.parts.map((part, index) => {
     const key = `${message.id}-${index}`;
 
     if (part.type === "text") {
       return message.role === "user" ? (
-        <UserMessage key={key}>{part.text || " "}</UserMessage>
+        <UserMessage key={key} color={userColor}>
+          {part.text || " "}
+        </UserMessage>
       ) : (
         <AssistantMessage key={key}>{part.text || " "}</AssistantMessage>
       );

@@ -14,6 +14,8 @@ type MessageEvent = {
   messageId: string;
   role: string;
   parts: unknown;
+  /** Per-message metadata (e.g. the mode the user sent it in); */
+  metadata?: unknown;
   ts: string;
 };
 type ErrorEvent = {
@@ -53,7 +55,11 @@ function previewFromParts(parts: unknown): string | null {
 /** Append one event to a session's log, creating the project directory on demand. */
 async function append(sessionId: string, event: SessionEvent): Promise<void> {
   await mkdir(projectDir(), { recursive: true });
-  await appendFile(sessionFile(sessionId), `${JSON.stringify(event)}\n`, "utf8");
+  await appendFile(
+    sessionFile(sessionId),
+    `${JSON.stringify(event)}\n`,
+    "utf8",
+  );
 }
 
 /**
@@ -63,19 +69,23 @@ async function append(sessionId: string, event: SessionEvent): Promise<void> {
  */
 export async function appendMessage(
   sessionId: string,
-  message: { id?: string; role: string; parts: unknown },
+  message: { id?: string; role: string; parts: unknown; metadata?: unknown },
 ): Promise<void> {
   await append(sessionId, {
     type: "message",
     messageId: message.id ?? generateId(),
     role: message.role,
     parts: message.parts,
+    metadata: message.metadata,
     ts: new Date().toISOString(),
   });
 }
 
 /** Record a failed turn at its point in the timeline. */
-export async function appendError(sessionId: string, error: unknown): Promise<void> {
+export async function appendError(
+  sessionId: string,
+  error: unknown,
+): Promise<void> {
   await append(sessionId, {
     type: "error",
     errorText: error instanceof Error ? error.message : String(error),
@@ -119,6 +129,7 @@ export async function loadMessages(sessionId: string): Promise<UIMessage[]> {
       id: event.messageId,
       role: event.role as UIMessage["role"],
       parts: event.parts as UIMessage["parts"],
+      ...(event.metadata === undefined ? {} : { metadata: event.metadata }),
     });
   }
   return [...byId.values()];
