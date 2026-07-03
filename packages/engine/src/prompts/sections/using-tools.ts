@@ -3,16 +3,16 @@ import type { PromptContext } from "../types";
 import {
   EDIT_FILE,
   GLOB,
+  GREP,
   LIST_DIRECTORY,
   READ_FILE,
   RUN_COMMAND,
-  SEARCH_FILES,
   WRITE_FILE,
 } from "../../tools/names";
 
 /**
  * Mirrors Claude Code's `getUsingYourToolsSection`. babalcode maps Glob→glob and
- * Grep→searchFiles, and adds a listDirectory bullet (no LS tool in Claude Code's
+ * Grep→grep, and adds a listDirectory bullet (no LS tool in Claude Code's
  * current prompt); it has no Task tool, so that bullet is dropped. Each
  * dedicated-tool bullet is gated on `enabledTools` so modes that restrict the
  * toolset (e.g. Plan) don't point at tools they lack.
@@ -37,9 +37,9 @@ export function buildUsingToolsSection(ctx: PromptContext): string | null {
   if (enabledTools.has(GLOB)) {
     providedToolSubitems.push(`To search for files use ${GLOB} instead of find or ls`);
   }
-  if (enabledTools.has(SEARCH_FILES)) {
+  if (enabledTools.has(GREP)) {
     providedToolSubitems.push(
-      `To search the content of files, use ${SEARCH_FILES} instead of grep or rg`,
+      `To search the content of files, use ${GREP} instead of the grep or rg shell commands`,
     );
   }
   if (enabledTools.has(LIST_DIRECTORY)) {

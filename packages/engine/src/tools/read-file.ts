@@ -1,6 +1,7 @@
 import { readFile, stat } from "node:fs/promises";
 import { tool } from "ai";
 import { z } from "zod";
+import { recordFileRead } from "../read-tracker";
 import { truncateToTokens } from "../tokens";
 import { resolveInWorkspace, toWorkspaceRelative, WorkspaceError } from "../workspace";
 
@@ -55,6 +56,9 @@ export const readFileTool = tool({
 
       const raw = await readFile(abs, "utf8");
       const rel = toWorkspaceRelative(abs);
+      // Mark the file read (with its current mtime) so `editFile` can require a prior
+      // read and detect out-of-band changes. A partial (offset/limit) read still counts.
+      recordFileRead(abs, info.mtimeMs);
 
       if (raw === "") {
         return {

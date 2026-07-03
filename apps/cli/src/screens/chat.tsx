@@ -1,7 +1,7 @@
 import { useChat } from "@ai-sdk/react";
 import type { ScrollBoxRenderable } from "@opentui/core";
 import { useKeyboard } from "@opentui/react";
-import { DEFAULT_MODE_ID, isModeId } from "@babalcode/engine";
+import { clearReadTracker, DEFAULT_MODE_ID, isModeId } from "@babalcode/engine";
 import type { ModeId } from "@babalcode/engine";
 import { isToolUIPart, type UIMessage } from "ai";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -43,6 +43,12 @@ export function Chat() {
   const initialModeId: ModeId | undefined = isModeId(rawModeId) ? rawModeId : undefined;
 
   const [initialMessages, setInitialMessages] = useState<UIMessage[] | null>(null);
+
+  // Switching/resuming a session must not inherit the previous conversation's file
+  // read-state — the engine tracker is process-global, so reset it per active session.
+  useEffect(() => {
+    clearReadTracker();
+  }, [id]);
 
   useEffect(() => {
     if (!id) return;

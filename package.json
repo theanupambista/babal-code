@@ -15,5 +15,8 @@
   "devDependencies": {
     "@types/bun": "latest",
     "typescript": "^5"
-  }
+  },
+  "trustedDependencies": [
+    "@vscode/ripgrep"
+  ]
 }

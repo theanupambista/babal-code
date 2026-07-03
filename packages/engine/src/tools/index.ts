@@ -1,9 +1,9 @@
 import { editFileTool } from "./edit-file";
 import { globTool } from "./glob";
+import { grepTool } from "./grep";
 import { listDirectoryTool } from "./list-directory";
 import { readFileTool } from "./read-file";
 import { runCommandTool } from "./run-command";
-import { searchFilesTool } from "./search-files";
 import { writeFileTool } from "./write-file";
 
 /**
@@ -17,7 +17,7 @@ export const codingTools = {
   writeFile: writeFileTool,
   editFile: editFileTool,
   listDirectory: listDirectoryTool,
-  searchFiles: searchFilesTool,
+  grep: grepTool,
   glob: globTool,
   runCommand: runCommandTool,
 };

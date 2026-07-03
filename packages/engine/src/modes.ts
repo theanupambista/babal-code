@@ -41,7 +41,7 @@ export const MODES: readonly Mode[] = [
       "(you cannot write files, edit files, or run commands). Investigate thoroughly, then " +
       "present a clear, step-by-step implementation plan for the user to review and approve. " +
       "If the user asks you to make changes, explain that they must switch to Build mode (Tab).",
-    tools: ["readFile", "listDirectory", "searchFiles", "glob"],
+    tools: ["readFile", "listDirectory", "grep", "glob"],
   },
 ] as const;
 

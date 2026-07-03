@@ -32,10 +32,10 @@ const TITLES: Record<string, TitleFn> = {
   writeFile: (i) => str(i.path) ?? "",
   editFile: (i) => str(i.path) ?? "",
   listDirectory: (i) => `${str(i.path) ?? "."}${i.recursive ? " (recursive)" : ""}`,
-  searchFiles: (i) => {
+  grep: (i) => {
     const pattern = str(i.pattern) ?? "";
-    const glob = str(i.glob);
-    return glob ? `'${pattern}' in ${glob}` : `'${pattern}'`;
+    const scope = str(i.glob) ?? str(i.type) ?? str(i.path);
+    return scope ? `'${pattern}' in ${scope}` : `'${pattern}'`;
   },
   runCommand: (i) => str(i.command) ?? "",
 };
@@ -62,14 +62,22 @@ const BODIES: Record<string, BodyFn> = {
     const count = `${names.length}${o.truncated ? "+" : ""} entries`;
     return names.length ? `${count}\n${names.join("\n")}` : count;
   },
-  searchFiles: (o) => {
-    const matches = Array.isArray(o.matches) ? o.matches : [];
-    const lines = matches.map((m) => {
-      const r = record(m);
-      return `${str(r?.file) ?? ""}:${num(r?.line) ?? 0}  ${(str(r?.text) ?? "").trim()}`;
-    });
-    const count = `${matches.length}${o.truncated ? "+" : ""} matches`;
-    return matches.length ? `${count}\n${lines.join("\n")}` : count;
+  grep: (o) => {
+    const more = o.truncated ? "+" : "";
+    if (o.mode === "content") {
+      const content = str(o.content) ?? "";
+      const count = `${num(o.numLines) ?? 0}${more} lines`;
+      return content ? `${count}\n${content}` : count;
+    }
+    if (o.mode === "count") {
+      const content = str(o.content) ?? "";
+      const count = `${num(o.numMatches) ?? 0} matches in ${num(o.numFiles) ?? 0}${more} files`;
+      return content ? `${count}\n${content}` : count;
+    }
+    // files_with_matches (default)
+    const files = Array.isArray(o.filenames) ? o.filenames.map((f) => str(f) ?? "") : [];
+    const count = `${files.length}${more} files`;
+    return files.length ? `${count}\n${files.join("\n")}` : count;
   },
   runCommand: (o) => {
     const parts = [`exit ${num(o.exitCode) ?? 0}`];

@@ -4,6 +4,7 @@
  * HTTP layer: the CLI imports and drives it in-process.
  */
 export { runAgent } from "./agent";
+export { clearReadTracker } from "./read-tracker";
 export { loadMessages, listSessions, type SessionSummary } from "./session/store";
 export { WORKSPACE_ROOT } from "./workspace";
 export { MODEL_ID } from "./constants";
