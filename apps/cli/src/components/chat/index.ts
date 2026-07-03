@@ -1,4 +1,5 @@
 export { ChatError } from "./chat-error";
+export { PermissionPrompt } from "./permission-prompt";
 export { CHAT_MAX_WIDTH, ChatLayout } from "./chat-layout";
 export { ChatMessages } from "./chat-messages";
 export { renderMessageParts } from "./chat-parts";

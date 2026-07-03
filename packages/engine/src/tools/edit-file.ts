@@ -1,6 +1,7 @@
 import { readFile, stat, writeFile } from "node:fs/promises";
 import { tool } from "ai";
 import { z } from "zod";
+import { permission } from "../permission";
 import { getFileReadMtime, recordFileRead } from "../read-tracker";
 import { resolveInWorkspace, toWorkspaceRelative, WorkspaceError } from "../workspace";
 
@@ -50,6 +51,12 @@ export const editFileTool = tool({
       const updated = replaceAll
         ? content.split(oldString).join(newString)
         : content.replace(oldString, newString);
+
+      // Gate on the permission broker once the edit is known-applicable (a denial
+      // throws and becomes the `{ error }` result the model self-corrects from).
+      const rel = toWorkspaceRelative(abs);
+      await permission.ask({ tool: "editFile", pattern: rel, title: `Edit ${rel}` });
+
       await writeFile(abs, updated, "utf8");
       // Our own write bumps mtime; re-record so a follow-up edit this turn still passes.
       recordFileRead(abs, (await stat(abs)).mtimeMs);

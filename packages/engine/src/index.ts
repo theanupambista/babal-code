@@ -33,3 +33,14 @@ export {
   type ModeId,
 } from "./modes";
 export { setApiKey, deleteApiKey, resolveApiKey, getStoredApiKey, hasApiKey, canStartApp, hasProviderAuth } from "./credentials";
+export {
+  permission,
+  PermissionDeniedError,
+  PermissionRejectedError,
+  type PermissionService,
+  type PendingPermission,
+  type PermissionAction,
+  type PermissionDecision,
+  type PermissionRequest,
+  type PermissionConfig,
+} from "./permission";

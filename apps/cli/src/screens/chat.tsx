@@ -1,15 +1,16 @@
 import { useChat } from "@ai-sdk/react";
 import type { ScrollBoxRenderable } from "@opentui/core";
 import { useKeyboard } from "@opentui/react";
-import { clearReadTracker, DEFAULT_MODE_ID, isModeId } from "@babalcode/engine";
+import { clearReadTracker, DEFAULT_MODE_ID, isModeId, permission } from "@babalcode/engine";
 import type { ModeId } from "@babalcode/engine";
 import { isToolUIPart, type UIMessage } from "ai";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { useLocation, useNavigate, useParams } from "react-router";
 import {
   ChatError,
   ChatLayout,
   ChatTextarea,
+  PermissionPrompt,
   renderMessageParts,
   ToolSelectionContext,
 } from "../components/chat";
@@ -124,6 +125,13 @@ function ChatView({
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [expandedIds, setExpandedIds] = useState<ReadonlySet<string>>(() => new Set());
 
+  // Pending permission requests from the engine broker. A mutating tool suspends its
+  // turn awaiting approval; we render the head of the queue in the banner slot and
+  // answer it via `permission.reply`. `subscribe`/`pending` are React-idiomatic
+  // (useSyncExternalStore); `pending` returns a stable snapshot between changes.
+  const pendingPermissions = useSyncExternalStore(permission.subscribe, permission.pending);
+  const activePermission = pendingPermissions[0] ?? null;
+
   const toolIds = useMemo(
     () =>
       messages.flatMap((m) =>
@@ -161,6 +169,18 @@ function ChatView({
     }
   });
 
+  // Answer the active permission prompt: y = allow once, a = allow always
+  // (persisted for this project), n = deny. The textarea is unfocused while a
+  // prompt is up (see `focused` below), so these keys don't land as input text.
+  useKeyboard((key) => {
+    if (!activePermission) return;
+    if (key.name === "y") permission.reply(activePermission.id, { type: "allow", scope: "once" });
+    else if (key.name === "a")
+      permission.reply(activePermission.id, { type: "allow", scope: "always" });
+    else if (key.name === "n")
+      permission.reply(activePermission.id, { type: "deny", scope: "once" });
+  });
+
   // Scroll the newly selected call into view (nearest alignment).
   useEffect(() => {
     if (selectedId) scrollRef.current?.scrollChildIntoView(selectedId);
@@ -189,10 +209,27 @@ function ChatView({
     <ChatLayout
       scrollRef={scrollRef}
       input={
-        <ChatTextarea modeId={modeId} onModeChange={setModeId} onSubmit={handleSubmit} />
+        <ChatTextarea
+          modeId={modeId}
+          onModeChange={setModeId}
+          onSubmit={handleSubmit}
+          focused={!activePermission}
+        />
       }
       banner={
-        status === "error" && error ? (
+        activePermission ? (
+          <PermissionPrompt
+            request={activePermission}
+            queued={pendingPermissions.length - 1}
+            onAllowOnce={() =>
+              permission.reply(activePermission.id, { type: "allow", scope: "once" })
+            }
+            onAllowAlways={() =>
+              permission.reply(activePermission.id, { type: "allow", scope: "always" })
+            }
+            onDeny={() => permission.reply(activePermission.id, { type: "deny", scope: "once" })}
+          />
+        ) : status === "error" && error ? (
           <ChatError
             message={error.message}
             onRetry={() => regenerate({ body: { modeId } })}

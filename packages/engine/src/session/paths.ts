@@ -32,3 +32,12 @@ export function projectDir(): string {
 export function sessionFile(sessionId: string): string {
   return path.join(projectDir(), `${sessionId}.jsonl`);
 }
+
+/**
+ * Where remembered "always allow/deny" permission decisions live for this
+ * workspace: `<projectDir>/permissions.json`. Project-scoped like sessions, so a
+ * decision made in one project never leaks into another.
+ */
+export function permissionsFile(): string {
+  return path.join(projectDir(), "permissions.json");
+}

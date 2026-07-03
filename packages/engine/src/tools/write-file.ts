@@ -2,6 +2,7 @@ import { mkdir, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { tool } from "ai";
 import { z } from "zod";
+import { permission } from "../permission";
 import { getFileReadMtime, recordFileRead } from "../read-tracker";
 import { resolveInWorkspace, toWorkspaceRelative, WorkspaceError } from "../workspace";
 
@@ -36,6 +37,11 @@ export const writeFileTool = tool({
           };
         }
       }
+
+      // Gate on the permission broker before touching disk (a denial throws and
+      // becomes the `{ error }` result the model self-corrects from).
+      const rel = toWorkspaceRelative(abs);
+      await permission.ask({ tool: "writeFile", pattern: rel, title: `Write ${rel}` });
 
       await mkdir(path.dirname(abs), { recursive: true });
       await writeFile(abs, content, "utf8");
