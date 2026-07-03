@@ -13,6 +13,8 @@ export const ROUTES = {
   session: (id: string) => `/sessions/${id}`,
   /** Model picker — choose the active model from the provider's catalog. */
   model: "/model",
+  /** OpenAI-compatible endpoint setup — base URL, model id, optional API key. */
+  custom: "/custom",
   /** API-key entry — masked field; stores the key in the OS keychain. */
   login: "/login",
 } as const;

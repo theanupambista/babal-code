@@ -9,7 +9,7 @@ import {
 import { getModelSelection } from "./config";
 import { resolveApiKey } from "./credentials";
 import { getMode } from "./modes";
-import { PROVIDERS } from "./providers";
+import { PROVIDERS, resolveLanguageModel } from "./providers";
 import { SYSTEM_PROMPT } from "./system-prompt";
 import { appendError, appendMessage } from "./session/store";
 import { codingTools } from "./tools";
@@ -42,12 +42,13 @@ export async function runAgent({
   // turn, so switching either via slash command takes effect on the next message
   // with no restart. A rejected promise here surfaces as the CLI's error banner.
   const { provider, model } = await getModelSelection();
+  const providerInfo = PROVIDERS[provider];
   const apiKey = resolveApiKey(provider);
-  if (!apiKey) {
-    throw new Error(
-      `No API key for ${PROVIDERS[provider].label}. Run /login to add one.`,
-    );
+  if (providerInfo.requiresApiKey !== false && !apiKey) {
+    throw new Error(`No API key for ${providerInfo.label}. Run /login to add one.`);
   }
+
+  const languageModel = await resolveLanguageModel(provider, model, apiKey);
 
   // Resolve the active mode from the caller-supplied id. A mode injects extra system
   // instructions and restricts the toolset to its allowlist; "all" = every tool.
@@ -65,7 +66,7 @@ export async function runAgent({
         );
 
   const result = streamText({
-    model: PROVIDERS[provider].createModel(apiKey, model),
+    model: languageModel,
     system,
     messages: await convertToModelMessages(messages),
     tools: activeTools,
@@ -73,9 +74,9 @@ export async function runAgent({
     // stop condition the run ends after the first tool call. Cap the loop generously.
     stopWhen: stepCountIs(25),
     // Gemini omits thinking tokens unless explicitly asked to include them.
-    providerOptions: {
-      google: { thinkingConfig: { includeThoughts: true } },
-    },
+    ...(provider === "google"
+      ? { providerOptions: { google: { thinkingConfig: { includeThoughts: true } } } }
+      : {}),
   });
 
   // `sendReasoning` is required for reasoning parts to reach the UI message stream;

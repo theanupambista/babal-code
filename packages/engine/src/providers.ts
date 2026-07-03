@@ -1,8 +1,20 @@
 import { createGoogleGenerativeAI } from "@ai-sdk/google";
+import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
 import type { LanguageModel } from "ai";
+import { getCustomConfig, getModelSelection, isCustomReady } from "./config";
+import { configFile } from "./session/paths";
 
 /** A selectable model within a provider's curated catalog. */
 export type ModelInfo = {
+  id: string;
+  label: string;
+};
+
+/** Sentinel model id for the /model picker “set up custom” entry. */
+export const CUSTOM_SETUP_MODEL_ID = "__custom_setup__";
+
+export type ModelOption = {
+  provider: ProviderId;
   id: string;
   label: string;
 };
@@ -20,6 +32,8 @@ export type ProviderInfo = {
   /** Env var the SDK conventionally reads; also our env-override key source. */
   envVar: string;
   models: readonly ModelInfo[];
+  /** When false, the agent may run without a resolved API key (e.g. local Ollama). */
+  requiresApiKey?: boolean;
   createModel: (apiKey: string, modelId: string) => LanguageModel;
 };
 
@@ -28,11 +42,22 @@ export const PROVIDERS = {
     id: "google",
     label: "Google Gemini",
     envVar: "GOOGLE_GENERATIVE_AI_API_KEY",
+    requiresApiKey: true,
     models: [
       { id: "gemini-2.5-flash", label: "Gemini 2.5 Flash" },
       { id: "gemini-2.5-pro", label: "Gemini 2.5 Pro" },
     ],
     createModel: (apiKey, modelId) => createGoogleGenerativeAI({ apiKey })(modelId),
+  },
+  custom: {
+    id: "custom",
+    label: "Custom (OpenAI-compatible)",
+    envVar: "CUSTOM_API_KEY",
+    models: [],
+    requiresApiKey: false,
+    createModel: () => {
+      throw new Error("Use resolveLanguageModel() for the custom provider");
+    },
   },
 } satisfies Record<string, ProviderInfo>;
 
@@ -43,3 +68,89 @@ export const DEFAULT_PROVIDER: ProviderId = "google";
 
 /** The model used when config has no explicit choice. */
 export const DEFAULT_MODEL = "gemini-2.5-flash";
+
+/** Resolve a language model for the given provider, model id, and optional key. */
+export async function resolveLanguageModel(
+  providerId: ProviderId,
+  modelId: string,
+  apiKey: string | null,
+): Promise<LanguageModel> {
+  if (providerId === "custom") {
+    const custom = await getCustomConfig();
+    if (!custom) {
+      throw new Error(
+        `Custom provider requires custom.baseURL in ${configFile()}. Example:\n` +
+          `{\n  "provider": "custom",\n  "model": "llama3.2",\n` +
+          `  "custom": { "baseURL": "http://localhost:11434/v1" }\n}`,
+      );
+    }
+    return createOpenAICompatible({
+      name: "custom",
+      baseURL: custom.baseURL,
+      apiKey: apiKey ?? "no-key",
+    })(modelId);
+  }
+
+  if (!apiKey) {
+    throw new Error(`No API key for ${PROVIDERS[providerId].label}. Run /login to add one.`);
+  }
+  return PROVIDERS[providerId].createModel(apiKey, modelId);
+}
+
+/** All models available in the `/model` picker, including config-driven custom. */
+export async function listModelOptions(): Promise<ModelOption[]> {
+  const options: ModelOption[] = Object.values(PROVIDERS).flatMap((provider) =>
+    provider.models.map((m) => ({
+      provider: provider.id as ProviderId,
+      id: m.id,
+      label: `${m.label} · ${provider.label}`,
+    })),
+  );
+
+  options.push({
+    provider: "custom",
+    id: CUSTOM_SETUP_MODEL_ID,
+    label: `Set up custom endpoint · ${PROVIDERS.custom.label}`,
+  });
+
+  if (await isCustomReady()) {
+    const { model } = await getModelSelection();
+    const custom = await getCustomConfig();
+    const providerLabel = custom?.label ?? PROVIDERS.custom.label;
+    const modelLabel = custom?.modelLabel ?? model;
+    options.push({
+      provider: "custom",
+      id: model,
+      label: `${modelLabel} · ${providerLabel}`,
+    });
+  }
+
+  return options;
+}
+
+/** Display label for the active model in the chat footer. */
+export async function getModelDisplayLabel(
+  providerId: ProviderId,
+  modelId: string,
+): Promise<{ modelLabel: string; providerLabel: string }> {
+  const catalogMatch = PROVIDERS[providerId].models.find((m) => m.id === modelId);
+  if (catalogMatch) {
+    return {
+      modelLabel: catalogMatch.label,
+      providerLabel: PROVIDERS[providerId].label,
+    };
+  }
+
+  if (providerId === "custom") {
+    const custom = await getCustomConfig();
+    return {
+      modelLabel: custom?.modelLabel ?? modelId,
+      providerLabel: custom?.label ?? PROVIDERS.custom.label,
+    };
+  }
+
+  return {
+    modelLabel: modelId,
+    providerLabel: PROVIDERS[providerId].label,
+  };
+}

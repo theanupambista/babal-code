@@ -3,7 +3,7 @@ import { DEFAULT_MODE_ID } from "@babalcode/engine";
 import type { ModeId } from "@babalcode/engine";
 import { useState } from "react";
 import { useNavigate } from "react-router";
-import { ChatTextarea } from "../components/chat";
+import { CHAT_MAX_WIDTH, ChatTextarea } from "../components/chat";
 import { Logo } from "../components/logo";
 import { ROUTES } from "../routes";
 
@@ -38,7 +38,11 @@ export function Home() {
       <box alignItems="center">
         <Logo />
       </box>
-      <ChatTextarea modeId={modeId} onModeChange={setModeId} onSubmit={handleSubmit} />
+      <box alignItems="center" width="100%">
+        <box width="100%" maxWidth={CHAT_MAX_WIDTH}>
+          <ChatTextarea modeId={modeId} onModeChange={setModeId} onSubmit={handleSubmit} />
+        </box>
+      </box>
     </box>
   );
 }

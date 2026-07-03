@@ -1,4 +1,5 @@
 import { Entry } from "@napi-rs/keyring";
+import { isCustomReady } from "./config";
 import { PROVIDERS, type ProviderId } from "./providers";
 
 /**
@@ -50,4 +51,26 @@ export function resolveApiKey(provider: ProviderId): string | null {
 /** Whether a usable key exists for the provider (env or keychain). */
 export function hasApiKey(provider: ProviderId): boolean {
   return resolveApiKey(provider) !== null;
+}
+
+/** Whether the app can start without forcing `/login` (any provider ready). */
+export async function canStartApp(): Promise<boolean> {
+  if (await isCustomReady()) return true;
+  for (const id of Object.keys(PROVIDERS) as ProviderId[]) {
+    if (id === "custom") continue;
+    if (hasApiKey(id)) return true;
+  }
+  return false;
+}
+
+/** Whether the custom provider can run (configured baseURL, key optional). */
+export async function hasCustomAuth(): Promise<boolean> {
+  if (resolveApiKey("custom")) return true;
+  return isCustomReady();
+}
+
+/** Whether a usable key exists for the provider, or custom is configured without a key. */
+export async function hasProviderAuth(provider: ProviderId): Promise<boolean> {
+  if (provider === "custom") return hasCustomAuth();
+  return hasApiKey(provider);
 }

@@ -11,11 +11,17 @@ export {
   PROVIDERS,
   DEFAULT_PROVIDER,
   DEFAULT_MODEL,
+  CUSTOM_SETUP_MODEL_ID,
+  resolveLanguageModel,
+  listModelOptions,
+  getModelDisplayLabel,
   type ProviderId,
   type ProviderInfo,
   type ModelInfo,
+  type ModelOption,
 } from "./providers";
-export { getModelSelection, setModelSelection } from "./config";
+export { getModelSelection, setModelSelection, getCustomConfig, isCustomReady, setCustomProvider } from "./config";
+export { configFile } from "./session/paths";
 export {
   MODES,
   DEFAULT_MODE_ID,
@@ -25,4 +31,4 @@ export {
   type Mode,
   type ModeId,
 } from "./modes";
-export { setApiKey, deleteApiKey, resolveApiKey, getStoredApiKey, hasApiKey } from "./credentials";
+export { setApiKey, deleteApiKey, resolveApiKey, getStoredApiKey, hasApiKey, canStartApp, hasProviderAuth } from "./credentials";

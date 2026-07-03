@@ -1,36 +1,57 @@
-import { DEFAULT_PROVIDER, PROVIDERS, setApiKey } from "@babalcode/engine";
+import { getModelSelection, PROVIDERS, setApiKey } from "@babalcode/engine";
+import type { ProviderId } from "@babalcode/engine";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router";
 import { MaskedInput } from "../components/masked-input";
 import { ROUTES } from "../routes";
 import { colors } from "../theme";
 
 /**
- * `/login` — enter the provider's API key via a masked field and store it in the
- * OS keychain. Also the first-run screen when no key is resolvable (see the boot
- * routing in `router.tsx`).
- *
- * Single provider for now, so there's no provider picker yet — it's keyed by
- * `DEFAULT_PROVIDER` and a `<select>` slots in above the field once there are more.
+ * `/login` — enter the API key for the *currently selected* provider via a masked
+ * field and store it in the OS keychain. Also the first-run screen when no key is
+ * resolvable (see the boot routing in `router.tsx`), where the selection is still the
+ * default provider. The key is namespaced per provider, so switching model via
+ * `/model` and re-running `/login` sets the key for that provider.
  */
 export function Login() {
   const navigate = useNavigate();
-  const provider = PROVIDERS[DEFAULT_PROVIDER];
+  const [providerId, setProviderId] = useState<ProviderId>("google");
+
+  useEffect(() => {
+    let cancelled = false;
+    void getModelSelection()
+      .then((selection) => {
+        if (!cancelled) setProviderId(selection.provider);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const provider = PROVIDERS[providerId];
+  const apiKeyOptional = provider.requiresApiKey === false;
 
   const handleSubmit = (key: string) => {
-    setApiKey(DEFAULT_PROVIDER, key);
-    // Go home rather than back: on first run there is no prior screen.
+    if (key.trim()) setApiKey(providerId, key);
     navigate(ROUTES.home);
   };
 
   return (
     <box flexGrow={1} flexDirection="column" alignItems="center" justifyContent="center" gap={1}>
       <text fg={colors.accent}>Set your {provider.label} API key</text>
-      <text fg={colors.muted}>Stored securely in your OS keychain — never written to disk.</text>
+      {apiKeyOptional ? (
+        <text fg={colors.muted}>
+          API key optional · submit empty to skip · env: {provider.envVar}
+        </text>
+      ) : (
+        <text fg={colors.muted}>Uses the {provider.envVar} key · stored in your OS keychain, never on disk.</text>
+      )}
       <box width={64}>
         <MaskedInput
           onSubmit={handleSubmit}
           onCancel={() => navigate(ROUTES.home)}
-          placeholder="Paste your API key…"
+          placeholder={apiKeyOptional ? "Paste API key or leave empty…" : "Paste your API key…"}
         />
       </box>
     </box>

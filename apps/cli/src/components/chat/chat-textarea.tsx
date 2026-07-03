@@ -1,7 +1,7 @@
 import type { TextareaRenderable } from "@opentui/core";
 import { useKeyboard } from "@opentui/react";
-import { getMode, getModelSelection, getNextModeId, PROVIDERS } from "@babalcode/engine";
-import type { ModeId, ProviderId } from "@babalcode/engine";
+import { getMode, getModelDisplayLabel, getModelSelection, getNextModeId } from "@babalcode/engine";
+import type { ModeId } from "@babalcode/engine";
 import { useEffect, useRef, useState } from "react";
 import { colors } from "../../theme";
 import { EmptyBorder } from "../border";
@@ -24,14 +24,6 @@ const KEY_BINDINGS = [
   { name: "return", shift: true, action: "newline" as const },
 ];
 
-/** Cap prompt width on wide terminals; still grows to fill narrower viewports. */
-const MAX_WIDTH = 100;
-
-function getModelLabel(providerId: ProviderId, modelId: string): string {
-  const match = PROVIDERS[providerId].models.find((m) => m.id === modelId);
-  return match?.label ?? modelId;
-}
-
 /**
  * Multi-line chat input, modelled on opencode's prompt.
  *
@@ -39,8 +31,8 @@ function getModelLabel(providerId: ProviderId, modelId: string): string {
  * submit, then bump `generation` to remount it with an empty `initialValue`.
  *
  * `flexShrink={0}` keeps the fixed-height input from being squeezed to nothing
- * when it sits next to a `flexGrow` scrollback in the chat layout. A max width
- * keeps the prompt readable on wide terminals and centres it in the row.
+ * when it sits next to a `flexGrow` scrollback in the chat layout. Width is
+ * capped by `ChatLayout`'s `CHAT_MAX_WIDTH` (or the home screen wrapper).
  *
  * Displays the active mode in the footer and cycles it with Tab/Shift+Tab, but the
  * mode is a *controlled* prop — the parent owns the state so it can also drive the
@@ -62,10 +54,11 @@ export function ChatTextarea({
   useEffect(() => {
     let cancelled = false;
     void getModelSelection()
-      .then(({ provider, model }) => {
+      .then(({ provider, model }) => getModelDisplayLabel(provider, model))
+      .then(({ modelLabel, providerLabel }) => {
         if (cancelled) return;
-        setModelLabel(getModelLabel(provider, model));
-        setProviderLabel(PROVIDERS[provider].label);
+        setModelLabel(modelLabel);
+        setProviderLabel(providerLabel);
       })
       .catch(() => {
         if (!cancelled) {
@@ -97,44 +90,40 @@ export function ChatTextarea({
   const modeColor = modeId === "plan" ? colors.plan : colors.accent;
 
   return (
-    <box flexShrink={0} alignItems="center" width="100%">
-      <box flexDirection="column" flexShrink={0} width="100%" maxWidth={MAX_WIDTH}>
-        <box flexDirection="row" flexShrink={0} width="100%">
-          <box border={["left"]} borderColor={modeColor} customBorderChars={{ ...EmptyBorder, vertical: "┃" }} />
-          <box
-            backgroundColor="#1E1E1E"
-            paddingX={3}
-            paddingY={1}
-            flexDirection="column"
-            flexGrow={1}
-          >
-            <textarea
-              key={generation}
-              ref={textareaRef}
-              placeholder={placeholder}
-              focused={focused}
-              height={2}
-              wrapMode="word"
-              textColor={colors.text}
-              cursorColor={colors.accent}
-              placeholderColor={colors.muted}
-              keyBindings={KEY_BINDINGS}
-              onSubmit={handleSubmit}
-            />
-            <box flexDirection="row" justifyContent="space-between">
-              <text>
-                <span fg={modeColor}>{getMode(modeId).label}</span>
-                {modelLabel && providerLabel ? (
-                  <>
-                    <span fg={colors.muted}> · </span>
-                    <span fg="#ffffff">{modelLabel}&nbsp;</span>
-                    <span fg="#808080">{providerLabel}</span>
-                  </>
-                ) : null}
-              </text>
-              <text fg={colors.muted}>ctrl+c to exit</text>
-            </box>
-          </box>
+    <box flexShrink={0} flexDirection="row" width="100%">
+      <box border={["left"]} borderColor={modeColor} customBorderChars={{ ...EmptyBorder, vertical: "┃" }} />
+      <box
+        backgroundColor={colors.panel}
+        paddingX={3}
+        paddingY={1}
+        flexDirection="column"
+        flexGrow={1}
+      >
+        <textarea
+          key={generation}
+          ref={textareaRef}
+          placeholder={placeholder}
+          focused={focused}
+          height={2}
+          wrapMode="word"
+          textColor={colors.text}
+          cursorColor={colors.accent}
+          placeholderColor={colors.muted}
+          keyBindings={KEY_BINDINGS}
+          onSubmit={handleSubmit}
+        />
+        <box flexDirection="row" justifyContent="space-between">
+          <text>
+            <span fg={modeColor}>{getMode(modeId).label}</span>
+            {modelLabel && providerLabel ? (
+              <>
+                <span fg={colors.muted}> · </span>
+                <span fg="#ffffff">{modelLabel}&nbsp;</span>
+                <span fg="#808080">{providerLabel}</span>
+              </>
+            ) : null}
+          </text>
+          <text fg={colors.muted}>ctrl+c to exit</text>
         </box>
       </box>
     </box>

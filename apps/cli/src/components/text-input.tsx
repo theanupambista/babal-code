@@ -3,34 +3,22 @@ import { useKeyboard, useRenderer } from "@opentui/react";
 import { useEffect, useState } from "react";
 import { colors } from "../theme";
 
-type MaskedInputProps = {
-  /** Called with the trimmed secret when the user presses Enter. */
+type TextInputProps = {
+  /** Called with the trimmed value when the user presses Enter. */
   onSubmit: (value: string) => void;
   /** Called when the user presses Esc. */
   onCancel?: () => void;
   placeholder?: string;
-  /** When true, Enter with an empty field still calls onSubmit(""). */
-  allowEmpty?: boolean;
+  /** Initial value when editing existing config. */
+  defaultValue?: string;
 };
 
 /**
- * A single-line secret input that renders bullets instead of the typed text.
- *
- * OpenTUI has no native password field, and a controlled `<input>` can't mask
- * cleanly (masking the `value` corrupts the edit buffer). So we own the buffer:
- * `useKeyboard` collects keystrokes, a paste handler collects pasted bytes (API
- * keys are almost always pasted), and we render bullets — with a Ctrl+R reveal
- * toggle. The real value never touches an `<input>`, the chat, or the session log.
+ * Single-line plain text input — same keyboard/paste model as `MaskedInput`, without masking.
  */
-export function MaskedInput({
-  onSubmit,
-  onCancel,
-  placeholder = "",
-  allowEmpty = false,
-}: MaskedInputProps) {
+export function TextInput({ onSubmit, onCancel, placeholder = "", defaultValue = "" }: TextInputProps) {
   const renderer = useRenderer();
-  const [value, setValue] = useState("");
-  const [reveal, setReveal] = useState(false);
+  const [value, setValue] = useState(defaultValue);
 
   useKeyboard((key) => {
     if (key.name === "escape") {
@@ -39,25 +27,18 @@ export function MaskedInput({
     }
     if (key.name === "return" || key.name === "enter") {
       const trimmed = value.trim();
-      if (trimmed || allowEmpty) onSubmit(trimmed);
+      if (trimmed) onSubmit(trimmed);
       return;
     }
     if (key.name === "backspace") {
       setValue((v) => v.slice(0, -1));
       return;
     }
-    if (key.ctrl && key.name === "r") {
-      setReveal((r) => !r);
-      return;
-    }
-    // A printable character arrives as a single-char sequence with no modifiers;
-    // special keys (arrows, function keys) come through as longer escape sequences.
     if (!key.ctrl && !key.meta && key.sequence.length === 1 && key.sequence >= " ") {
       setValue((v) => v + key.sequence);
     }
   });
 
-  // React has no paste hook — subscribe to the renderer's paste event directly.
   useEffect(() => {
     const handlePaste = (event: PasteEvent) => {
       const text = stripAnsiSequences(decodePasteBytes(event.bytes)).replace(/[\r\n]+/g, "");
@@ -70,7 +51,7 @@ export function MaskedInput({
   }, [renderer]);
 
   const isEmpty = value.length === 0;
-  const display = isEmpty ? placeholder : reveal ? value : "•".repeat(value.length);
+  const display = isEmpty ? placeholder : value;
 
   return (
     <box flexDirection="column" gap={1}>
@@ -83,9 +64,7 @@ export function MaskedInput({
       >
         <text fg={isEmpty ? colors.muted : colors.text}>{display || " "}</text>
       </box>
-      <text fg={colors.muted}>
-        enter to save · ctrl+r to {reveal ? "hide" : "reveal"} · esc to cancel
-      </text>
+      <text fg={colors.muted}>enter to continue · esc to cancel</text>
     </box>
   );
 }

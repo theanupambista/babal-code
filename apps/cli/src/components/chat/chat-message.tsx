@@ -1,6 +1,7 @@
 import type { ToolUIPart } from "ai";
 import type { ReactNode } from "react";
 import { colors } from "../../theme";
+import { EmptyBorder } from "../border";
 
 type ChatMessageProps = {
   /** Short role label shown above the body (e.g. "you", "babal"). */
@@ -25,12 +26,28 @@ export function ChatMessage({ label, labelColor = colors.muted, children }: Chat
   );
 }
 
-/** A message authored by the human. */
+/** A message authored by the human — styled like the prompt input panel. */
 export function UserMessage({ children }: { children: ReactNode }) {
   return (
-    <ChatMessage label="you" labelColor={colors.accent}>
-      {children}
-    </ChatMessage>
+    <box flexDirection="column">
+      <text fg={colors.accent}>you</text>
+      <box flexDirection="row" flexShrink={0} width="100%">
+        <box
+          border={["left"]}
+          borderColor={colors.accent}
+          customBorderChars={{ ...EmptyBorder, vertical: "┃" }}
+        />
+        <box
+          backgroundColor={colors.panel}
+          paddingX={3}
+          paddingY={1}
+          flexDirection="column"
+          flexGrow={1}
+        >
+          <text fg={colors.text}>{children}</text>
+        </box>
+      </box>
+    </box>
   );
 }
 
