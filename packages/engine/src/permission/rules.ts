@@ -1,4 +1,4 @@
-import type { ToolName } from "../modes";
+import type { Mode, ToolName } from "../modes";
 import type {
   PermissionConfig,
   PermissionRuleValue,
@@ -14,8 +14,16 @@ const READ_ONLY_TOOLS: ReadonlySet<ToolName> = new Set([
   "glob",
 ]);
 
-function defaultAction(tool: ToolName): PermissionAction {
-  return READ_ONLY_TOOLS.has(tool) ? "allow" : "ask";
+/**
+ * The default action for a tool with no matching rule or remembered decision.
+ * Read-only tools always `allow`; a mutating tool `allow`s only if the active
+ * mode opts it into `autoAllow` (e.g. Build auto-allows writeFile/editFile),
+ * otherwise `ask`.
+ */
+function defaultAction(tool: ToolName, mode: Mode): PermissionAction {
+  if (READ_ONLY_TOOLS.has(tool)) return "allow";
+  if (mode.autoAllow?.includes(tool)) return "allow";
+  return "ask";
 }
 
 /** Compile a shell-style glob (`*` = any, `?` = one char) to an anchored RegExp. */
@@ -53,12 +61,14 @@ function matchesFor(
  *      overrides a broader `"*"`; the "*" catch-all block is considered first,
  *      then the tool-specific block)
  *   3. remembered "always" decision for this project (exact pattern)
- *   4. per-tool default (read-only → allow, mutating → ask)
+ *   4. mode-aware per-tool default (read-only → allow, mode `autoAllow` → allow,
+ *      otherwise mutating → ask)
  */
 export function evaluate(
   req: PermissionRequest,
   config: PermissionConfig,
   remembered: RememberedDecisions,
+  mode: Mode,
 ): PermissionAction {
   const { tool, pattern } = req;
   const matches = [
@@ -76,5 +86,5 @@ export function evaluate(
   const remembered_ = remembered[tool]?.[pattern];
   if (remembered_) return remembered_;
 
-  return defaultAction(tool);
+  return defaultAction(tool, mode);
 }

@@ -1,4 +1,5 @@
 import { generateId } from "ai";
+import { getMode, type Mode } from "../modes";
 import { evaluate } from "./rules";
 import {
   loadPermissionConfig,
@@ -48,6 +49,11 @@ let config: PermissionConfig = {};
 let remembered: RememberedDecisions = {};
 let loaded = false;
 
+// The mode for the in-flight turn — set by `runAgent` before streaming (like bash's
+// `currentCwd`). Its `autoAllow` list shifts the *default* action for mutating tools
+// (e.g. Build auto-allows writeFile/editFile). Defaults to the base mode.
+let activeMode: Mode = getMode(undefined);
+
 async function ensureLoaded(): Promise<void> {
   if (loaded) return;
   [config, remembered] = await Promise.all([
@@ -66,6 +72,8 @@ function rebuildSnapshot(): void {
 export interface PermissionService {
   evaluate(req: PermissionRequest): PermissionAction;
   ask(req: PermissionRequest): Promise<void>;
+  /** Set the mode for the current turn; its `autoAllow` shapes the default action. */
+  setActiveMode(mode: string): void;
   reply(id: string, decision: PermissionDecision): void;
   pending(): readonly PendingPermission[];
   subscribe(listener: () => void): () => void;
@@ -80,12 +88,16 @@ export interface PermissionService {
  */
 export const permission: PermissionService = {
   evaluate(req) {
-    return evaluate(req, config, remembered);
+    return evaluate(req, config, remembered, activeMode);
+  },
+
+  setActiveMode(mode) {
+    activeMode = getMode(mode);
   },
 
   async ask(req) {
     await ensureLoaded();
-    const action = evaluate(req, config, remembered);
+    const action = evaluate(req, config, remembered, activeMode);
     if (action === "allow") return;
     if (action === "deny") {
       throw new PermissionDeniedError(

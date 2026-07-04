@@ -20,6 +20,14 @@ export type Mode = {
   instructions: string; // appended to the base system prompt ("" = base only)
   /** Allowed tools: "all" = every tool, or an explicit allowlist (default-deny). */
   tools: "all" | readonly ToolName[];
+  /**
+   * Tools whose permission *default* is `allow` in this mode, instead of the
+   * global per-tool default (mutating tools normally `ask`). Lets an opt-in mode
+   * like Build skip prompts for its safe mutations (writeFile/editFile) while
+   * riskier tools (bash) still prompt. This only shifts the default: a config
+   * `deny`/explicit `ask` rule and remembered decisions still take precedence.
+   */
+  autoAllow?: readonly ToolName[];
 };
 
 // Order defines the Tab cycle order.
@@ -30,6 +38,10 @@ export const MODES: readonly Mode[] = [
     description: "Full access — read, write, edit, and run commands.",
     instructions: "", // base system prompt already describes build behaviour
     tools: "all",
+    // Build is the explicit "make changes" mode: file writes/edits auto-allow so
+    // the user isn't prompted on every one. bash still asks (running arbitrary
+    // commands is a categorically higher risk than an in-workspace file edit).
+    autoAllow: ["writeFile", "editFile"],
   },
   {
     id: "plan",

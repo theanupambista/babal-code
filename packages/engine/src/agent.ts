@@ -9,6 +9,7 @@ import {
 import { getModelSelection } from "./config";
 import { resolveApiKey } from "./credentials";
 import { getMode } from "./modes";
+import { permission } from "./permission";
 import { PROVIDERS, resolveLanguageModel } from "./providers";
 import { getSystemPrompt } from "./prompts";
 import { appendError, appendMessage } from "./session/store";
@@ -53,6 +54,9 @@ export async function runAgent({
   // Resolve the active mode from the caller-supplied id. A mode injects extra system
   // instructions and restricts the toolset to its allowlist; "all" = every tool.
   const activeMode = getMode(mode);
+  // Tell the permission broker which mode this turn runs in, so its `autoAllow`
+  // list (Build auto-allows writeFile/editFile) shapes default permission actions.
+  permission.setActiveMode(activeMode.id);
   const activeTools =
     activeMode.tools === "all"
       ? codingTools
