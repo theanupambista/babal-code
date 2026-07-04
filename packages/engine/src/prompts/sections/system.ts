@@ -1,6 +1,6 @@
 import { section } from "../format";
 
-/** Mirrors Claude Code's `getSimpleSystemSection` (including its hooks bullet). */
+/** System section: */
 export function buildSystemSection(): string {
   return section("# System", [
     "All text you output outside of tool use is displayed to the user. Output text to communicate with the user. You can use Github-flavored markdown for formatting, and will be rendered in a monospace font using the CommonMark specification.",

@@ -3,10 +3,14 @@ import { tool } from "ai";
 import { z } from "zod";
 import { recordFileRead } from "../read-tracker";
 import { truncateToTokens } from "../tokens";
-import { resolveInWorkspace, toWorkspaceRelative, WorkspaceError } from "../workspace";
+import {
+  resolveInWorkspace,
+  toWorkspaceRelative,
+  WorkspaceError,
+} from "../workspace";
 
 /**
- * Limits mirror Claude Code's Read tool so the model sees a familiar contract:
+ * Limits:
  * a byte cap on the file, a default line window, a per-line character cap, and a
  * token cap on the numbered output (counted with a real tokenizer, see `tokens.ts`).
  */
@@ -18,7 +22,9 @@ const MAX_OUTPUT_TOKENS = 25_000; // token budget for the numbered output
 /** Format one line the way `cat -n` does: right-aligned number, tab, content. */
 function numberLine(lineNo: number, text: string): string {
   const clipped =
-    text.length > MAX_LINE_LENGTH ? `${text.slice(0, MAX_LINE_LENGTH)}… [line truncated]` : text;
+    text.length > MAX_LINE_LENGTH
+      ? `${text.slice(0, MAX_LINE_LENGTH)}… [line truncated]`
+      : text;
   return `${String(lineNo).padStart(6, " ")}\t${clipped}`;
 }
 
@@ -47,7 +53,8 @@ export const readFileTool = tool({
     try {
       const abs = resolveInWorkspace(path);
       const info = await stat(abs);
-      if (info.isDirectory()) return { error: `"${path}" is a directory, not a file.` };
+      if (info.isDirectory())
+        return { error: `"${path}" is a directory, not a file.` };
       if (info.size > MAX_BYTES) {
         return {
           error: `"${path}" is ${info.size} bytes; too large to read (max ${MAX_BYTES}). Use offset/limit to read a slice, or search the file instead.`,
@@ -63,7 +70,8 @@ export const readFileTool = tool({
       if (raw === "") {
         return {
           path: rel,
-          content: "<system-reminder>Warning: the file exists but has empty contents.</system-reminder>",
+          content:
+            "<system-reminder>Warning: the file exists but has empty contents.</system-reminder>",
           totalLines: 0,
         };
       }
@@ -80,7 +88,10 @@ export const readFileTool = tool({
       let content = text;
       if (truncated) {
         // decode may cut mid-line; trim back to the last newline for clean output.
-        content = content.slice(0, content.lastIndexOf("\n") + 1 || content.length);
+        content = content.slice(
+          0,
+          content.lastIndexOf("\n") + 1 || content.length,
+        );
         content += `\n<system-reminder>Output truncated at ${MAX_OUTPUT_TOKENS} tokens. Use offset/limit to read the rest.</system-reminder>`;
       }
 

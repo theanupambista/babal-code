@@ -3,11 +3,13 @@ import path from "node:path";
 /**
  * The single sandbox root every file tool is confined to. This is the process's
  * current working directory, captured once at module load — the agent is meant
- * to be launched (like `claude` / `opencode`) from the directory it should work
+ * to be launched from the directory it should work
  * in, so `cwd` *is* "the current directory". `WORKSPACE_ROOT` env is honored as a
  * test-only override; it is intentionally not a documented `.env` setting.
  */
-export const WORKSPACE_ROOT = path.resolve(process.env.WORKSPACE_ROOT ?? process.cwd());
+export const WORKSPACE_ROOT = path.resolve(
+  process.env.WORKSPACE_ROOT ?? process.cwd(),
+);
 
 /** Thrown when a tool is asked to touch a path outside {@link WORKSPACE_ROOT}. */
 export class WorkspaceError extends Error {
@@ -31,7 +33,10 @@ export function resolveInWorkspace(relOrAbs: string): string {
   const resolved = path.resolve(WORKSPACE_ROOT, relOrAbs);
   // Compare against `root + sep` so `/foobar` is not accepted as being inside
   // `/foo`. The root itself is also allowed.
-  if (resolved !== WORKSPACE_ROOT && !resolved.startsWith(WORKSPACE_ROOT + path.sep)) {
+  if (
+    resolved !== WORKSPACE_ROOT &&
+    !resolved.startsWith(WORKSPACE_ROOT + path.sep)
+  ) {
     throw new WorkspaceError(
       `Path "${relOrAbs}" is outside the workspace and cannot be accessed.`,
     );

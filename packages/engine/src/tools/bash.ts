@@ -25,7 +25,7 @@ const CWD_MARKER = "__BABAL_CWD__:";
 
 /**
  * Locate a POSIX `bash`. We run every command through bash on all platforms so
- * command syntax is identical everywhere (like Claude Code) instead of using
+ * command syntax is identical everywhere instead of using
  * `cmd` on Windows. On Windows that means Git for Windows' bash.exe; developers
  * almost always have Git installed. Resolution order: explicit override env var,
  * then the standard Git install locations, then whatever `bash` is on PATH.
@@ -59,7 +59,9 @@ function bashPath(): string | null {
 }
 
 function clamp(text: string): string {
-  return text.length > MAX_OUTPUT ? `${text.slice(0, MAX_OUTPUT)}\n…[truncated]` : text;
+  return text.length > MAX_OUTPUT
+    ? `${text.slice(0, MAX_OUTPUT)}\n…[truncated]`
+    : text;
 }
 
 /**
@@ -134,7 +136,8 @@ function killProcessTree(proc: ReturnType<typeof Bun.spawn>): void {
 
 /** Depth-first collect every descendant PID of `rootPid` from a `ps` snapshot (POSIX). */
 function posixDescendants(rootPid: number): number[] {
-  const snapshot = Bun.spawnSync(["ps", "-A", "-o", "pid=,ppid="]).stdout?.toString() ?? "";
+  const snapshot =
+    Bun.spawnSync(["ps", "-A", "-o", "pid=,ppid="]).stdout?.toString() ?? "";
   const childrenOf = new Map<number, number[]>();
   for (const line of snapshot.split("\n")) {
     const match = line.trim().match(/^(\d+)\s+(\d+)$/);
@@ -170,7 +173,7 @@ export const bashTool = tool({
     "foreground processes (a dev server, `watch`); pass non-interactive flags (e.g. `--yes`), " +
     "pipe input in, or append ` | cat` to defeat a pager. " +
     "Use POSIX sh syntax even on Windows: `/dev/null` not `NUL`, forward slashes in paths, " +
-    "`$VAR` not `%VAR%`. Quote any path containing spaces (e.g. \"C:/Program Files/app\"). " +
+    '`$VAR` not `%VAR%`. Quote any path containing spaces (e.g. "C:/Program Files/app"). ' +
     "Returns stdout, stderr, exit code, the current cwd, " +
     "and `timedOut` (true if the command was killed for exceeding its timeout — its output " +
     "may be partial and its exit code reflects the kill, not the command itself).",
@@ -233,7 +236,11 @@ export const bashTool = tool({
       // distinguished from an ordinary failure — flag it explicitly and note it
       // in stderr (where the model reads command failures) so it doesn't retry blindly.
       const timeoutNote = `[command exceeded its ${timeoutMs}ms timeout and was terminated, along with any processes it spawned; output may be partial]`;
-      const finalStderr = timedOut ? (stderr ? `${stderr}\n${timeoutNote}` : timeoutNote) : stderr;
+      const finalStderr = timedOut
+        ? stderr
+          ? `${stderr}\n${timeoutNote}`
+          : timeoutNote
+        : stderr;
 
       return {
         exitCode,

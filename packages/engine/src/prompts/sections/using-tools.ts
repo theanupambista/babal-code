@@ -11,8 +11,9 @@ import {
 } from "../../tools/names";
 
 /**
- * Mirrors Claude Code's `getUsingYourToolsSection`. babalcode maps Glob→glob and
- * Grep→grep, and adds a listDirectory bullet (no LS tool in Claude Code's
+ * Using tools section:
+ * babalcode maps Glob→glob and
+ * Grep→grep, and adds a listDirectory bullet (no LS tool in babalcode's
  * current prompt); it has no Task tool, so that bullet is dropped. Each
  * dedicated-tool bullet is gated on `enabledTools` so modes that restrict the
  * toolset (e.g. Plan) don't point at tools they lack.
@@ -27,7 +28,9 @@ export function buildUsingToolsSection(ctx: PromptContext): string | null {
     );
   }
   if (enabledTools.has(EDIT_FILE)) {
-    providedToolSubitems.push(`To edit files use ${EDIT_FILE} instead of sed or awk`);
+    providedToolSubitems.push(
+      `To edit files use ${EDIT_FILE} instead of sed or awk`,
+    );
   }
   if (enabledTools.has(WRITE_FILE)) {
     providedToolSubitems.push(
@@ -35,7 +38,9 @@ export function buildUsingToolsSection(ctx: PromptContext): string | null {
     );
   }
   if (enabledTools.has(GLOB)) {
-    providedToolSubitems.push(`To search for files use ${GLOB} instead of find or ls`);
+    providedToolSubitems.push(
+      `To search for files use ${GLOB} instead of find or ls`,
+    );
   }
   if (enabledTools.has(GREP)) {
     providedToolSubitems.push(

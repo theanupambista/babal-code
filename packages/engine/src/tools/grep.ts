@@ -222,7 +222,7 @@ export const grepTool = tool({
       };
     }
 
-    // files_with_matches (default): sort by mtime (most recent first) like ripgrep + Claude Code.
+    // files_with_matches (default): sort by mtime (most recent first) like ripgrep.
     const withMtime = await Promise.all(
       results.map(async (rel) => {
         try {

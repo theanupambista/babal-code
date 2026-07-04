@@ -15,7 +15,7 @@ export function configFile(): string {
 }
 
 /**
- * Sessions are scoped to the workspace they were created in (like Claude Code),
+ * Sessions are scoped to the workspace they were created in,
  * keyed by a stable hash of the absolute workspace root so different projects
  * never share a history directory.
  */

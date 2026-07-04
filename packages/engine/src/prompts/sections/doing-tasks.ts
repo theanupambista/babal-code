@@ -1,9 +1,8 @@
 import { section } from "../format";
 
 /**
- * Mirrors Claude Code's `getSimpleDoingTasksSection` (external, non-`ant`
- * variant). The `AskUserQuestion` escalation and "/help" / feedback bullets are
- * adapted to babalcode, which has no such tool or Claude-Code product channels.
+ * The `AskUserQuestion` escalation and "/help" / feedback bullets are
+ * adapted to babalcode, which has no such tool or product channels.
  */
 export function buildDoingTasksSection(): string {
   return section("# Doing tasks", [

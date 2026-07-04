@@ -1,5 +1,5 @@
 /**
- * Intro / identity section. Mirrors Claude Code's `getSimpleIntroSection`:
+ * Intro / identity section:
  * the framing sentence, the cyber-risk safety instruction (owned by the
  * Safeguards team — reproduced verbatim), and the URL-guessing guard.
  */

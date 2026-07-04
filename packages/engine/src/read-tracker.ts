@@ -1,7 +1,7 @@
 /**
  * Records which files were read this process and their mtime at read time, so
  * `editFile` can refuse edits to files that were never read or changed on disk since
- * (mirrors Claude Code's Edit gates). Process-global: the CLI runs one session per
+ * Process-global: the CLI runs one session per
  * process and tool `execute` gets no session id to key on.
  */
 const lastReadMtimeMs = new Map<string, number>();

@@ -1,4 +1,4 @@
-/** Verbatim reproduction of Claude Code's `getOutputEfficiencySection` (external). */
+/** Output efficiency section: */
 export function buildOutputEfficiencySection(): string {
   return `# Output efficiency
 

@@ -4,7 +4,11 @@ import { tool } from "ai";
 import { z } from "zod";
 import { permission } from "../permission";
 import { getFileReadMtime, recordFileRead } from "../read-tracker";
-import { resolveInWorkspace, toWorkspaceRelative, WorkspaceError } from "../workspace";
+import {
+  resolveInWorkspace,
+  toWorkspaceRelative,
+  WorkspaceError,
+} from "../workspace";
 
 export const writeFileTool = tool({
   description:
@@ -41,14 +45,21 @@ export const writeFileTool = tool({
       // Gate on the permission broker before touching disk (a denial throws and
       // becomes the `{ error }` result the model self-corrects from).
       const rel = toWorkspaceRelative(abs);
-      await permission.ask({ tool: "writeFile", pattern: rel, title: `Write ${rel}` });
+      await permission.ask({
+        tool: "writeFile",
+        pattern: rel,
+        title: `Write ${rel}`,
+      });
 
       await mkdir(path.dirname(abs), { recursive: true });
       await writeFile(abs, content, "utf8");
-      // Treat a written file as read (like Claude Code) so a later `editFile` isn't
+      // Treat a written file as read so a later `editFile` isn't
       // blocked by the never-read gate.
       recordFileRead(abs, (await stat(abs)).mtimeMs);
-      return { path: toWorkspaceRelative(abs), bytesWritten: Buffer.byteLength(content, "utf8") };
+      return {
+        path: toWorkspaceRelative(abs),
+        bytesWritten: Buffer.byteLength(content, "utf8"),
+      };
     } catch (error) {
       if (error instanceof WorkspaceError) return { error: error.message };
       return { error: error instanceof Error ? error.message : String(error) };

@@ -1,6 +1,6 @@
 import { section } from "../format";
 
-/** Mirrors Claude Code's `getSimpleToneAndStyleSection` (external, non-`ant`). */
+/** Tone and style section: */
 export function buildToneAndStyleSection(): string {
   return section("# Tone and style", [
     "Only use emojis if the user explicitly requests it. Avoid using emojis in all communication unless asked.",
