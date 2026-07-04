@@ -201,12 +201,11 @@ function ChatView({
 
   const handleSubmit = (value: string, mode: ModeId) => {
     if (isChatBusy(status)) return;
+    // Only a bare slash command runs as a command; the same text with trailing
+    // args, in quotes, or mid-sentence falls through to be sent as a message.
+    if (runSlashCommand(value, { navigate, exit: () => renderer.destroy() })) return;
     const text = value.trim();
     if (!text) return;
-    if (text.startsWith("/")) {
-      runSlashCommand(text, { navigate, exit: () => renderer.destroy() });
-      return;
-    }
     sendMessage({ text, metadata: { modeId: mode } }, { body: { modeId: mode } });
   };
 

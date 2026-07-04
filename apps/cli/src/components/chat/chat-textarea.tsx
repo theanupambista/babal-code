@@ -10,7 +10,11 @@ import { BAR_CONTENT_PADDING } from "./chat-message";
 import { SlashCommandMenu } from "./slash-command-menu";
 
 type ChatTextareaProps = {
-  /** Called with the trimmed message and the active mode id when the user submits. */
+  /**
+   * Called with the raw (untrimmed) input and the active mode id when the user
+   * submits. Untrimmed so the parent can tell a bare slash command from the same
+   * text with trailing whitespace; the parent trims for the message path.
+   */
   onSubmit?: (value: string, modeId: ModeId) => void;
   placeholder?: string;
   /** Whether the textarea owns keyboard focus. */
@@ -133,9 +137,12 @@ export function ChatTextarea({
       acceptSelected();
       return;
     }
-    const message = textareaRef.current?.plainText.trim() ?? "";
-    if (message.length === 0) return;
-    onSubmit?.(message, modeId);
+    // Pass the raw (untrimmed) text: whether it's a bare slash command depends on
+    // there being no trailing space/args, so trimming here would hide that. The
+    // parent trims for the message path.
+    const value = textareaRef.current?.plainText ?? "";
+    if (value.trim().length === 0) return;
+    onSubmit?.(value, modeId);
     setGeneration((g) => g + 1);
   };
 

@@ -37,21 +37,29 @@ export type SlashCommandContext = {
 };
 
 /**
- * Execute a submitted slash command. Most commands are route paths and simply
- * navigate there; `/clear` returns to the home screen and `/exit` quits the app.
- * Unknown paths still navigate, falling through to the `*` NotFound screen.
+ * If `input` is a *bare* slash command — a lone `/token` at index 0 with no
+ * trailing space, arguments, or surrounding quotes (see `slashQuery`) — execute
+ * it and return `true`. Otherwise return `false`, leaving the caller to submit
+ * the input as ordinary text. This is what lets a user type a command's literal
+ * name mid-sentence, in quotes, or with a trailing space without triggering it.
+ *
+ * Most commands are route paths and simply navigate there; `/clear` returns to
+ * the home screen and `/exit` quits the app. Unknown (but still bare) paths
+ * navigate anyway, falling through to the `*` NotFound screen.
  */
-export function runSlashCommand(command: string, ctx: SlashCommandContext): void {
-  const path = command.toLowerCase();
+export function runSlashCommand(input: string, ctx: SlashCommandContext): boolean {
+  if (slashQuery(input) === null) return false;
+  const path = input.toLowerCase();
   switch (path) {
     case "/exit":
       ctx.exit();
-      return;
+      return true;
     case "/clear":
       ctx.navigate(ROUTES.home);
-      return;
+      return true;
     default:
       ctx.navigate(path);
+      return true;
   }
 }
 

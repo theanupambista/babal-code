@@ -23,15 +23,12 @@ export function Home() {
   const [modeId, setModeId] = useState<ModeId>(DEFAULT_MODE_ID);
 
   const handleSubmit = (value: string, modeId: ModeId) => {
+    // A bare slash command runs as a command (navigate to its route, or `/clear`/
+    // `/exit`); the same text with trailing args, in quotes, or mid-sentence is
+    // not bare and falls through to be submitted as a normal message.
+    if (runSlashCommand(value, { navigate, exit: () => renderer.destroy() })) return;
     const text = value.trim();
     if (!text) return;
-    // A slash command either navigates to its route or runs an action (`/clear`,
-    // `/exit`); `runSlashCommand` dispatches. Unknown paths fall through to the
-    // `*` NotFound screen.
-    if (text.startsWith("/")) {
-      runSlashCommand(text, { navigate, exit: () => renderer.destroy() });
-      return;
-    }
     // Carry the chosen mode so the Chat screen's first turn runs in it.
     const id = generateId();
     navigate(ROUTES.session(id), { state: { initialText: text, initialModeId: modeId } });
