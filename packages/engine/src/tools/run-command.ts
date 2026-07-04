@@ -98,13 +98,74 @@ function buildShell(bash: string, command: string): string[] {
   return [bash, "-c", wrapped];
 }
 
+/**
+ * Kill a timed-out command *and every process it spawned*. `proc.kill()` signals
+ * only the top process — here the bash wrapper — so anything it launched (a dev
+ * server, a compiler, a `sleep &`) keeps running, orphaned, after the timeout.
+ * Bun.spawn exposes no detached/process-group option, so we tear the tree down by
+ * PID: `taskkill /T` on Windows, and a `ps`-walked descendant sweep on POSIX.
+ * Runs only on the (rare) timeout path, so the synchronous spawns are acceptable.
+ */
+function killProcessTree(proc: ReturnType<typeof Bun.spawn>): void {
+  if (IS_WINDOWS) {
+    // /T kills the whole tree rooted at the PID, /F forces termination.
+    try {
+      Bun.spawnSync(["taskkill", "/F", "/T", "/PID", String(proc.pid)]);
+    } catch {
+      // taskkill unavailable/failed — fall through to the single-process kill below.
+    }
+  } else {
+    // Snapshot descendants *before* killing: signalling the parent reparents its
+    // children (to init) but does not stop them, so we must enumerate them first.
+    for (const child of posixDescendants(proc.pid)) {
+      try {
+        process.kill(child, "SIGKILL");
+      } catch {
+        // already exited
+      }
+    }
+  }
+  try {
+    proc.kill("SIGKILL");
+  } catch {
+    // already exited
+  }
+}
+
+/** Depth-first collect every descendant PID of `rootPid` from a `ps` snapshot (POSIX). */
+function posixDescendants(rootPid: number): number[] {
+  const snapshot = Bun.spawnSync(["ps", "-A", "-o", "pid=,ppid="]).stdout?.toString() ?? "";
+  const childrenOf = new Map<number, number[]>();
+  for (const line of snapshot.split("\n")) {
+    const match = line.trim().match(/^(\d+)\s+(\d+)$/);
+    if (!match) continue;
+    const pid = Number(match[1]);
+    const ppid = Number(match[2]);
+    const siblings = childrenOf.get(ppid);
+    if (siblings) siblings.push(pid);
+    else childrenOf.set(ppid, [pid]);
+  }
+  const descendants: number[] = [];
+  const stack = [rootPid];
+  while (stack.length > 0) {
+    const current = stack.pop()!;
+    for (const child of childrenOf.get(current) ?? []) {
+      descendants.push(child);
+      stack.push(child);
+    }
+  }
+  return descendants;
+}
+
 export const runCommandTool = tool({
   description:
     "Run a shell command in bash (POSIX sh syntax on every platform, including " +
     "Windows via Git Bash). The working directory starts at the workspace root " +
     `(${toWorkspaceRelative(WORKSPACE_ROOT)}) and persists across calls: a \`cd\` in one ` +
     "command carries into the next, like a normal terminal. Environment variables and " +
-    "shell functions do NOT persist. Returns stdout, stderr, exit code, and the current cwd.",
+    "shell functions do NOT persist. Returns stdout, stderr, exit code, the current cwd, " +
+    "and `timedOut` (true if the command was killed for exceeding its timeout — its output " +
+    "may be partial and its exit code reflects the kill, not the command itself).",
   inputSchema: z.object({
     command: z.string().describe("The shell command to run (bash syntax)."),
     timeout: z
@@ -144,7 +205,11 @@ export const runCommandTool = tool({
       });
 
       const timeoutMs = Math.min(timeout ?? DEFAULT_TIMEOUT_MS, MAX_TIMEOUT_MS);
-      const timer = setTimeout(() => proc.kill(), timeoutMs);
+      let timedOut = false;
+      const timer = setTimeout(() => {
+        timedOut = true;
+        killProcessTree(proc);
+      }, timeoutMs);
       const [rawStdout, stderr] = await Promise.all([
         new Response(proc.stdout).text(),
         new Response(proc.stderr).text(),
@@ -156,10 +221,17 @@ export const runCommandTool = tool({
       const { cwd, cleaned } = extractCwd(rawStdout);
       if (cwd) currentCwd = cwd;
 
+      // On timeout the process was killed, so exitCode/stderr alone can't be
+      // distinguished from an ordinary failure — flag it explicitly and note it
+      // in stderr (where the model reads command failures) so it doesn't retry blindly.
+      const timeoutNote = `[command exceeded its ${timeoutMs}ms timeout and was terminated, along with any processes it spawned; output may be partial]`;
+      const finalStderr = timedOut ? (stderr ? `${stderr}\n${timeoutNote}` : timeoutNote) : stderr;
+
       return {
         exitCode,
+        timedOut,
         stdout: clamp(cleaned),
-        stderr: clamp(stderr),
+        stderr: clamp(finalStderr),
         cwd: toWorkspaceRelative(currentCwd),
       };
     } catch (error) {
