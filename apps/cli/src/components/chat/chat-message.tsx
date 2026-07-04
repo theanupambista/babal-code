@@ -157,11 +157,6 @@ export function ToolMessage({
   );
 }
 
-/** A step boundary between multi-step assistant turns, drawn as a thin rule. */
-export function StepDivider() {
-  return <box border={["top"]} borderStyle="single" borderColor={colors.muted} />;
-}
-
 /**
  * The assistant's intermediate reasoning — dimmed and italic behind a muted left
  * bar, so it stays visually subordinate to the plain assistant text.

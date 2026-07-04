@@ -9,7 +9,6 @@ export { ToolSelectionContext } from "./tool-selection";
 export {
   AssistantMessage,
   ReasoningMessage,
-  StepDivider,
   ToolMessage,
   UserMessage,
 } from "./chat-message";

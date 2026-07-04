@@ -5,7 +5,6 @@ import { modeColor } from "../../theme";
 import {
   AssistantMessage,
   ReasoningMessage,
-  StepDivider,
   ToolMessage,
   UserMessage,
 } from "./chat-message";
@@ -37,10 +36,6 @@ export function renderMessageParts(message: UIMessage): ReactNode[] {
 
     if (part.type === "reasoning") {
       return <ReasoningMessage key={key}>{part.text || " "}</ReasoningMessage>;
-    }
-
-    if (part.type === "step-start") {
-      return <StepDivider key={key} />;
     }
 
     // Covers both typed (`tool-${name}`) and `dynamic-tool` parts.
