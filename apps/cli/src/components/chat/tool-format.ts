@@ -37,7 +37,7 @@ const TITLES: Record<string, TitleFn> = {
     const scope = str(i.glob) ?? str(i.type) ?? str(i.path);
     return scope ? `'${pattern}' in ${scope}` : `'${pattern}'`;
   },
-  runCommand: (i) => str(i.command) ?? "",
+  bash: (i) => str(i.command) ?? "",
 };
 
 const BODIES: Record<string, BodyFn> = {
@@ -79,7 +79,7 @@ const BODIES: Record<string, BodyFn> = {
     const count = `${files.length}${more} files`;
     return files.length ? `${count}\n${files.join("\n")}` : count;
   },
-  runCommand: (o) => {
+  bash: (o) => {
     const parts = [`exit ${num(o.exitCode) ?? 0}`];
     const stdout = str(o.stdout)?.trimEnd();
     const stderr = str(o.stderr)?.trimEnd();

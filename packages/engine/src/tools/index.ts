@@ -3,7 +3,7 @@ import { globTool } from "./glob";
 import { grepTool } from "./grep";
 import { listDirectoryTool } from "./list-directory";
 import { readFileTool } from "./read-file";
-import { runCommandTool } from "./run-command";
+import { bashTool } from "./bash";
 import { writeFileTool } from "./write-file";
 
 /**
@@ -19,5 +19,5 @@ export const codingTools = {
   listDirectory: listDirectoryTool,
   grep: grepTool,
   glob: globTool,
-  runCommand: runCommandTool,
+  bash: bashTool,
 };

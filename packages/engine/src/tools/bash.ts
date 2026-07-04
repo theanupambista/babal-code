@@ -157,13 +157,21 @@ function posixDescendants(rootPid: number): number[] {
   return descendants;
 }
 
-export const runCommandTool = tool({
+export const bashTool = tool({
   description:
     "Run a shell command in bash (POSIX sh syntax on every platform, including " +
     "Windows via Git Bash). The working directory starts at the workspace root " +
     `(${toWorkspaceRelative(WORKSPACE_ROOT)}) and persists across calls: a \`cd\` in one ` +
     "command carries into the next, like a normal terminal. Environment variables and " +
-    "shell functions do NOT persist. Returns stdout, stderr, exit code, the current cwd, " +
+    "shell functions do NOT persist. " +
+    "Commands run non-interactively — there is no TTY and no background mode — so a command " +
+    "that waits for input hangs until it times out and is then killed. Avoid interactive " +
+    "commands (`git rebase -i`, `npm init` without flags, pagers, prompts) and long-running " +
+    "foreground processes (a dev server, `watch`); pass non-interactive flags (e.g. `--yes`), " +
+    "pipe input in, or append ` | cat` to defeat a pager. " +
+    "Use POSIX sh syntax even on Windows: `/dev/null` not `NUL`, forward slashes in paths, " +
+    "`$VAR` not `%VAR%`. Quote any path containing spaces (e.g. \"C:/Program Files/app\"). " +
+    "Returns stdout, stderr, exit code, the current cwd, " +
     "and `timedOut` (true if the command was killed for exceeding its timeout — its output " +
     "may be partial and its exit code reflects the kill, not the command itself).",
   inputSchema: z.object({
@@ -192,7 +200,7 @@ export const runCommandTool = tool({
       // (PermissionDeniedError / PermissionRejectedError) and is caught below, becoming
       // the `{ error }` tool result the model sees and self-corrects from.
       await permission.ask({
-        tool: "runCommand",
+        tool: "bash",
         pattern: command,
         title: `Run: ${command}`,
         metadata: { cwd: toWorkspaceRelative(currentCwd) },

@@ -12,7 +12,7 @@ export type PermissionRuleValue =
  * The `permission` config block — keyed by tool name plus a "*" catch-all.
  * e.g.:
  *   { "*": "ask",
- *     "runCommand": { "*": "ask", "git *": "allow", "rm *": "deny" },
+ *     "bash": { "*": "ask", "git *": "allow", "rm *": "deny" },
  *     "editFile":   { "*": "allow", "*.env": "deny" } }
  * Loaded from ~/.babalcode/config.json (the same file `config.ts` reads).
  */

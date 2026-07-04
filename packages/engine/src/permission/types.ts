@@ -5,12 +5,12 @@ export type PermissionAction = "allow" | "ask" | "deny";
 
 /**
  * What a tool is asking permission to do. `pattern` is the matchable string —
- * the bash command for runCommand, the workspace-relative file path for
+ * the bash command for the bash tool, the workspace-relative file path for
  * editFile/writeFile — so rules like `"git *": "allow"` or `"*.env": "deny"`
  * can match it.
  */
 export interface PermissionRequest {
-  tool: ToolName; // "runCommand" | "editFile" | ...
+  tool: ToolName; // "bash" | "editFile" | ...
   pattern: string; // e.g. the command, or the path
   title: string; // human summary shown in the prompt UI
   metadata?: Record<string, unknown>; // optional extra (cwd, replacements, ...)

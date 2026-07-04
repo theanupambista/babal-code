@@ -1,12 +1,12 @@
 import { section } from "../format";
 import type { PromptContext } from "../types";
 import {
+  BASH,
   EDIT_FILE,
   GLOB,
   GREP,
   LIST_DIRECTORY,
   READ_FILE,
-  RUN_COMMAND,
   WRITE_FILE,
 } from "../../tools/names";
 
@@ -48,18 +48,18 @@ export function buildUsingToolsSection(ctx: PromptContext): string | null {
     );
   }
 
-  const hasRunCommand = enabledTools.has(RUN_COMMAND);
-  if (hasRunCommand && providedToolSubitems.length > 0) {
+  const hasBash = enabledTools.has(BASH);
+  if (hasBash && providedToolSubitems.length > 0) {
     providedToolSubitems.push(
-      `Reserve using the ${RUN_COMMAND} exclusively for system commands and terminal operations that require shell execution. If you are unsure and there is a relevant dedicated tool, default to using the dedicated tool and only fallback on using the ${RUN_COMMAND} tool for these if it is absolutely necessary.`,
+      `Reserve using the ${BASH} tool exclusively for system commands and terminal operations that require shell execution. If you are unsure and there is a relevant dedicated tool, default to using the dedicated tool and only fallback on using the ${BASH} tool for these if it is absolutely necessary.`,
     );
   }
 
   const items: Array<string | string[]> = [];
 
-  if (hasRunCommand && providedToolSubitems.length > 0) {
+  if (hasBash && providedToolSubitems.length > 0) {
     items.push(
-      `Do NOT use the ${RUN_COMMAND} to run commands when a relevant dedicated tool is provided. Using dedicated tools allows the user to better understand and review your work. This is CRITICAL to assisting the user:`,
+      `Do NOT use the ${BASH} tool to run commands when a relevant dedicated tool is provided. Using dedicated tools allows the user to better understand and review your work. This is CRITICAL to assisting the user:`,
     );
     items.push(providedToolSubitems);
   } else if (providedToolSubitems.length > 0) {

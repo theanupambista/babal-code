@@ -33,7 +33,7 @@ function defer<T>(): Deferred<T> {
   return { promise, resolve, reject };
 }
 
-// Process-global state (like read-tracker's module state and run-command's currentCwd).
+// Process-global state (like read-tracker's module state and bash's currentCwd).
 const registry = new Map<
   string,
   { request: PendingPermission; deferred: Deferred<void> }

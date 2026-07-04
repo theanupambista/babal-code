@@ -7,4 +7,4 @@ export const EDIT_FILE = "editFile" satisfies ToolName;
 export const LIST_DIRECTORY = "listDirectory" satisfies ToolName;
 export const GREP = "grep" satisfies ToolName;
 export const GLOB = "glob" satisfies ToolName;
-export const RUN_COMMAND = "runCommand" satisfies ToolName;
+export const BASH = "bash" satisfies ToolName;

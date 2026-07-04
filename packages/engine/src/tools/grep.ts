@@ -42,7 +42,7 @@ export const grepTool = tool({
   description: `A powerful search tool built on ripgrep
 
   Usage:
-  - ALWAYS use the grep tool for search tasks. NEVER invoke \`grep\` or \`rg\` as a runCommand; the grep tool is optimized for correct permissions and access.
+  - ALWAYS use the grep tool for search tasks. NEVER invoke \`grep\` or \`rg\` with the bash tool; the grep tool is optimized for correct permissions and access.
   - Supports full regex syntax (e.g., "log.*Error", "function\\s+\\w+")
   - Filter files with the glob parameter (e.g., "*.js", "**/*.tsx") or the type parameter (e.g., "js", "py", "rust")
   - Output modes: "content" shows matching lines, "files_with_matches" shows only file paths (default), "count" shows match counts
