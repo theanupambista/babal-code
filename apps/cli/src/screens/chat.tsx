@@ -1,6 +1,6 @@
 import { useChat } from "@ai-sdk/react";
 import type { ScrollBoxRenderable } from "@opentui/core";
-import { useKeyboard } from "@opentui/react";
+import { useKeyboard, useRenderer } from "@opentui/react";
 import { clearReadTracker, DEFAULT_MODE_ID, isModeId, permission } from "@babalcode/engine";
 import type { ModeId } from "@babalcode/engine";
 import { isToolUIPart, type UIMessage } from "ai";
@@ -16,6 +16,7 @@ import {
   renderMessageParts,
   ToolSelectionContext,
 } from "../components/chat";
+import { runSlashCommand } from "../commands";
 import { loadMessages } from "../lib/session";
 import { InProcessTransport } from "../lib/transport";
 import { colors } from "../theme";
@@ -109,6 +110,7 @@ function ChatView({
   initialModeId?: ModeId;
 }) {
   const navigate = useNavigate();
+  const renderer = useRenderer();
 
   const [modeId, setModeId] = useState<ModeId>(initialModeId ?? DEFAULT_MODE_ID);
 
@@ -202,7 +204,7 @@ function ChatView({
     const text = value.trim();
     if (!text) return;
     if (text.startsWith("/")) {
-      navigate(text.toLowerCase());
+      runSlashCommand(text, { navigate, exit: () => renderer.destroy() });
       return;
     }
     sendMessage({ text, metadata: { modeId: mode } }, { body: { modeId: mode } });

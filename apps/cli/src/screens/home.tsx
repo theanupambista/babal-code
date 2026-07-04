@@ -1,8 +1,10 @@
+import { useRenderer } from "@opentui/react";
 import { generateId } from "ai";
 import { DEFAULT_MODE_ID } from "@babalcode/engine";
 import type { ModeId } from "@babalcode/engine";
 import { useState } from "react";
 import { useNavigate } from "react-router";
+import { runSlashCommand } from "../commands";
 import { CHAT_MAX_WIDTH, ChatTextarea } from "../components/chat";
 import { Logo } from "../components/logo";
 import { ROUTES } from "../routes";
@@ -17,15 +19,17 @@ import { ROUTES } from "../routes";
  */
 export function Home() {
   const navigate = useNavigate();
+  const renderer = useRenderer();
   const [modeId, setModeId] = useState<ModeId>(DEFAULT_MODE_ID);
 
   const handleSubmit = (value: string, modeId: ModeId) => {
     const text = value.trim();
     if (!text) return;
-    // A slash command is just the route path: navigate to it and let the router
-    // resolve it (unknown paths fall through to the `*` NotFound screen).
+    // A slash command either navigates to its route or runs an action (`/clear`,
+    // `/exit`); `runSlashCommand` dispatches. Unknown paths fall through to the
+    // `*` NotFound screen.
     if (text.startsWith("/")) {
-      navigate(text.toLowerCase());
+      runSlashCommand(text, { navigate, exit: () => renderer.destroy() });
       return;
     }
     // Carry the chosen mode so the Chat screen's first turn runs in it.
