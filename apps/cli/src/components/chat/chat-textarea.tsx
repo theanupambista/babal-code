@@ -31,6 +31,14 @@ const KEY_BINDINGS = [
   { name: "return", shift: true, action: "newline" as const },
 ];
 
+// The input auto-grows with its content (opencode-style). OpenTUI's textarea
+// measure function already reports the full wrapped-line height when the height
+// is left `auto`, so we don't size it ourselves — we just bound it: it starts at
+// MIN_ROWS and expands one row per visual (wrapped) line up to MAX_ROWS, after
+// which the textarea scrolls internally instead of pushing the layout further.
+const MIN_ROWS = 2;
+const MAX_ROWS = 10;
+
 /**
  * Multi-line chat input, modelled on opencode's prompt.
  *
@@ -179,7 +187,8 @@ export function ChatTextarea({
             ref={textareaRef}
             placeholder={placeholder}
             focused={focused}
-            height={2}
+            minHeight={MIN_ROWS}
+            maxHeight={MAX_ROWS}
             wrapMode="word"
             textColor={colors.text}
             cursorColor={colors.accent}
