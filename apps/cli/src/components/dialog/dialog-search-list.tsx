@@ -1,6 +1,5 @@
-import { decodePasteBytes, stripAnsiSequences, type PasteEvent } from "@opentui/core";
-import { useKeyboard, useRenderer } from "@opentui/react";
 import { useEffect, useMemo, useState } from "react";
+import { useIsActiveLayer, useLayerKeyboard } from "../../services/layer";
 import { colors } from "../../theme";
 
 /** One row of the list. Mirrors OpenTUI's `SelectOption`, with a typed `value`. */
@@ -41,12 +40,14 @@ function matches(item: SearchListItem, query: string): boolean {
  * dialogs. Typing filters `items` by a case-insensitive substring match on the
  * name and description; ↑/↓ move the highlight and Enter confirms.
  *
- * The `<select>` is deliberately left unfocused and driven by a controlled
- * `selectedIndex`: that frees every printable key (including `j`/`k`, which the
- * focused select would otherwise swallow as navigation) for the search query,
- * while `selectedIndex` still scrolls the list. Keeps the same manual keyboard
- * model as `TextInput`, so paste and backspace behave consistently. Esc is left
- * for the surrounding `Dialog` to handle.
+ * The search box is a *real* focused `<input>`, so it renders a live cursor and
+ * reads as focused — the input owns typing, backspace and paste natively. The
+ * `<select>` beneath stays unfocused and is driven by a controlled
+ * `selectedIndex`: a focused select would swallow `j`/`k` (and the arrows) as
+ * navigation and starve the query, so we keep it inert and move the highlight
+ * ourselves. ↑/↓ are handled on the dialog's layer (and consumed, so they never
+ * reach the input's cursor); Enter arrives at the input as a submit; Esc is left
+ * for the surrounding `Dialog`.
  */
 export function DialogSearchList({
   items,
@@ -55,7 +56,9 @@ export function DialogSearchList({
   emptyText = "No matches.",
   listHeight = DEFAULT_LIST_HEIGHT,
 }: DialogSearchListProps) {
-  const renderer = useRenderer();
+  // Focus the input only while this dialog is the active layer — otherwise a
+  // dialog stacked on top would leave two live cursors.
+  const isActive = useIsActiveLayer();
   const [query, setQuery] = useState("");
   const [selectedIndex, setSelectedIndex] = useState(0);
 
@@ -67,53 +70,49 @@ export function DialogSearchList({
     if (clampedIndex !== selectedIndex) setSelectedIndex(clampedIndex);
   }, [clampedIndex, selectedIndex]);
 
-  useKeyboard((key) => {
-    if (key.name === "escape") return; // Dialog owns dismissal.
+  const confirm = () => {
+    const item = filtered[clampedIndex];
+    if (item) onSelect(item);
+  };
+
+  // ↑/↓ scroll the unfocused list. Consuming them (return true) keeps them off
+  // the focused input, whose single line has no use for them anyway. Everything
+  // else — printable keys, backspace, paste, Enter — falls through to the input.
+  useLayerKeyboard((key) => {
     if (key.name === "up") {
       setSelectedIndex((i) => Math.max(0, i - 1));
-      return;
+      return true;
     }
     if (key.name === "down") {
       setSelectedIndex((i) => Math.min(filtered.length - 1, i + 1));
-      return;
-    }
-    if (key.name === "return" || key.name === "enter") {
-      const item = filtered[clampedIndex];
-      if (item) onSelect(item);
-      return;
-    }
-    if (key.name === "backspace") {
-      setQuery((q) => q.slice(0, -1));
-      setSelectedIndex(0);
-      return;
-    }
-    if (!key.ctrl && !key.meta && key.sequence.length === 1 && key.sequence >= " ") {
-      setQuery((q) => q + key.sequence);
-      setSelectedIndex(0);
+      return true;
     }
   });
 
-  useEffect(() => {
-    const handlePaste = (event: PasteEvent) => {
-      const text = stripAnsiSequences(decodePasteBytes(event.bytes)).replace(/[\r\n]+/g, "");
-      if (text) {
-        setQuery((q) => q + text);
-        setSelectedIndex(0);
-      }
-    };
-    renderer.keyInput.on("paste", handlePaste);
-    return () => {
-      renderer.keyInput.off("paste", handlePaste);
-    };
-  }, [renderer]);
-
-  const isEmpty = query.length === 0;
-
   return (
     <box flexDirection="column" gap={1}>
-      {/* Search box — a bordered text display, matching `TextInput`'s look. */}
-      <box border borderStyle="rounded" borderColor={colors.accent} paddingLeft={1} paddingRight={1}>
-        <text fg={isEmpty ? colors.muted : colors.text}>{isEmpty ? placeholder : query}</text>
+      {/* Search box — a real focused input, so it shows a live cursor. */}
+      <box
+        border
+        borderStyle="rounded"
+        borderColor={colors.accent}
+        paddingLeft={1}
+        paddingRight={1}
+        flexDirection="row"
+      >
+        <input
+          focused={isActive}
+          placeholder={placeholder}
+          onInput={(value: string) => {
+            setQuery(value);
+            setSelectedIndex(0);
+          }}
+          onSubmit={confirm}
+          flexGrow={1}
+          textColor={colors.text}
+          cursorColor={colors.accent}
+          placeholderColor={colors.muted}
+        />
       </box>
 
       {filtered.length === 0 ? (
