@@ -10,9 +10,7 @@ import { useNavigate } from "react-router";
 import { ROUTES } from "../../routes";
 import { colors } from "../../theme";
 import { useDialog } from "./dialog-context";
-
-/** Visible rows in the model list before it scrolls internally. */
-const LIST_HEIGHT = 12;
+import { DialogSearchList } from "./dialog-search-list";
 
 /**
  * Body slot for the "Select model" dialog: the provider catalog as a scrollable
@@ -55,7 +53,7 @@ export function ModelDialogBody() {
     };
   }, []);
 
-  const options = modelOptions.map((m) => {
+  const items = modelOptions.map((m) => {
     const isCurrent = m.provider === currentProvider && m.id === current;
     return {
       name: m.label,
@@ -67,27 +65,20 @@ export function ModelDialogBody() {
   if (loading) return <text fg={colors.muted}>Loading models…</text>;
 
   return (
-    <box flexDirection="column" gap={1}>
-      <select
-        height={LIST_HEIGHT}
-        focused
-        options={options}
-        showScrollIndicator
-        selectedBackgroundColor={colors.accent}
-        selectedTextColor="#000000"
-        onSelect={(_index, option) => {
-          if (!option) return;
-          const [provider, ...rest] = (option.value as string).split(":");
-          const modelId = rest.join(":");
-          if (provider === "custom" && modelId === CUSTOM_SETUP_MODEL_ID) {
-            close();
-            navigate(ROUTES.custom);
-            return;
-          }
-          void setModelSelection(provider as ProviderId, modelId).then(close);
-        }}
-      />
-      <text fg={colors.muted}>↑/↓ to navigate · enter to select · esc to close</text>
-    </box>
+    <DialogSearchList
+      items={items}
+      placeholder="Search models…"
+      emptyText="No models match your search."
+      onSelect={(item) => {
+        const [provider, ...rest] = item.value.split(":");
+        const modelId = rest.join(":");
+        if (provider === "custom" && modelId === CUSTOM_SETUP_MODEL_ID) {
+          close();
+          navigate(ROUTES.custom);
+          return;
+        }
+        void setModelSelection(provider as ProviderId, modelId).then(close);
+      }}
+    />
   );
 }

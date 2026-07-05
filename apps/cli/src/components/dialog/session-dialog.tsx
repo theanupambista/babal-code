@@ -4,9 +4,7 @@ import { listSessions, type SessionSummary } from "../../lib/session";
 import { ROUTES } from "../../routes";
 import { colors } from "../../theme";
 import { useDialog } from "./dialog-context";
-
-/** Visible rows in the session list before it scrolls internally. */
-const LIST_HEIGHT = 12;
+import { DialogSearchList } from "./dialog-search-list";
 
 /** Compact "3m ago" / "2h ago" / "5d ago" label from an ISO timestamp. */
 function relativeTime(iso: string): string {
@@ -59,28 +57,21 @@ export function SessionListBody() {
     return <text fg={colors.muted}>No sessions yet — start a conversation from the home screen.</text>;
   }
 
-  const options = sessions.map((session) => ({
+  const items = sessions.map((session) => ({
     name: truncate(session.title ?? session.preview ?? "(untitled)", 60),
     description: `${relativeTime(session.updatedAt)}${session.model ? ` · ${session.model}` : ""}`,
     value: session.id,
   }));
 
   return (
-    <box flexDirection="column" gap={1}>
-      <select
-        height={LIST_HEIGHT}
-        focused
-        options={options}
-        showScrollIndicator
-        selectedBackgroundColor={colors.accent}
-        selectedTextColor="#000000"
-        onSelect={(_index, option) => {
-          if (!option) return;
-          close();
-          navigate(ROUTES.session(option.value as string));
-        }}
-      />
-      <text fg={colors.muted}>↑/↓ to navigate · enter to open · esc to close</text>
-    </box>
+    <DialogSearchList
+      items={items}
+      placeholder="Search sessions…"
+      emptyText="No sessions match your search."
+      onSelect={(item) => {
+        close();
+        navigate(ROUTES.session(item.value));
+      }}
+    />
   );
 }
