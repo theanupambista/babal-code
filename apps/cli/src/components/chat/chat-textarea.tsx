@@ -78,7 +78,14 @@ export function ChatTextarea({
   );
   const menuOpen = focused && commands.length > 0;
 
+  // Read the active model for the footer, re-reading whenever the input regains focus.
+  // The model picker is a dialog that unfocuses this input while open (see `focused`),
+  // so focus returning is our signal that a newly-chosen model may need to be reflected.
+  // Reading only at mount would leave the footer stuck on the model selected earlier —
+  // the config is a plain file with no change notification. A re-read is a cheap in-process
+  // read, and setState bails out when the label is unchanged, so there's no flicker.
   useEffect(() => {
+    if (!focused) return;
     let cancelled = false;
     void getModelSelection()
       .then(({ provider, model }) => getModelDisplayLabel(provider, model))
@@ -96,7 +103,7 @@ export function ChatTextarea({
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [focused]);
 
   // Read the textarea's live text on every edit to drive the autocomplete menu.
   // The textarea is uncontrolled, so this is our only view of its value; any

@@ -49,6 +49,20 @@ export function Chat() {
 
   const [initialMessages, setInitialMessages] = useState<UIMessage[] | null>(null);
 
+  // Switching sessions must drop back to the loading gate *synchronously*, before the
+  // `key={id}` remount fires. `useChat` reads its `messages` only at mount, and the id
+  // change (hence the remount) is synchronous while the history load below is async. If
+  // `initialMessages` still held the outgoing session's transcript at that remount, the
+  // new `ChatView` would capture it and ignore the later async load (same key) — leaving
+  // the freshly-opened session showing the previous conversation. Resetting to `null`
+  // here (guarded by a ref so it only fires on an actual change) forces the gate, so
+  // `ChatView` mounts exactly once, with the correct history.
+  const loadedId = useRef(id);
+  if (loadedId.current !== id) {
+    loadedId.current = id;
+    setInitialMessages(null);
+  }
+
   // Switching/resuming a session must not inherit the previous conversation's file
   // read-state — the engine tracker is process-global, so reset it per active session.
   useEffect(() => {
