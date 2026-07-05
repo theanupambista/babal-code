@@ -6,7 +6,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router";
 import { runSlashCommand } from "../commands";
 import { CHAT_MAX_WIDTH, ChatTextarea } from "../components/chat";
-import { ModelDialogBody, useDialog } from "../components/dialog";
+import { ModelDialogBody, SessionListBody, useDialog } from "../components/dialog";
 import { Logo } from "../components/logo";
 import { ROUTES } from "../routes";
 
@@ -25,12 +25,14 @@ export function Home() {
   const [modeId, setModeId] = useState<ModeId>(DEFAULT_MODE_ID);
 
   const openModel = () => open({ title: "Select model", body: <ModelDialogBody /> });
+  const openSessions = () => open({ title: "Sessions", body: <SessionListBody /> });
 
   const handleSubmit = (value: string, modeId: ModeId) => {
     // A bare slash command runs as a command (navigate to its route, or `/clear`/
     // `/exit`); the same text with trailing args, in quotes, or mid-sentence is
     // not bare and falls through to be submitted as a normal message.
-    if (runSlashCommand(value, { navigate, exit: () => renderer.destroy(), openModel })) return;
+    if (runSlashCommand(value, { navigate, exit: () => renderer.destroy(), openModel, openSessions }))
+      return;
     const text = value.trim();
     if (!text) return;
     // Carry the chosen mode so the Chat screen's first turn runs in it.

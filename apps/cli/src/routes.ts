@@ -7,8 +7,6 @@
  */
 export const ROUTES = {
   home: "/",
-  /** The session picker — lists past conversations to resume. */
-  sessions: "/sessions",
   /** A conversation screen. The id is client-generated and used as the session id. */
   session: (id: string) => `/sessions/${id}`,
   /** OpenAI-compatible endpoint setup — base URL, model id, optional API key. */

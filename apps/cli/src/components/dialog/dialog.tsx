@@ -31,9 +31,6 @@ export function Dialog({ title, onClose, children }: DialogProps) {
     <box
       width={DIALOG_WIDTH}
       flexDirection="column"
-      border
-      borderStyle="rounded"
-      borderColor={colors.muted}
       backgroundColor={colors.panel}
       paddingLeft={2}
       paddingRight={2}

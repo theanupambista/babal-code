@@ -11,13 +11,16 @@
 import { ROUTES } from "./routes";
 
 /** `/models` — an action (opens the model picker dialog), not a route. */
-export const MODEL_COMMAND = "/models";
+export const MODELS_COMMAND = "/models";
+
+/** `/sessions` — an action (opens the session picker dialog), not a route. */
+export const SESSIONS_COMMAND = "/sessions";
 
 export type SlashCommand = {
   /**
    * The full command as typed, e.g. `/sessions`. Usually the route path it
-   * navigates to; a few (`/models`, `/clear`, `/exit`) are actions handled by
-   * `runSlashCommand`.
+   * navigates to; a few (`/sessions`, `/models`, `/clear`, `/exit`) are actions
+   * handled by `runSlashCommand`.
    */
   command: string;
   /** One-line description shown beside the command in the menu. */
@@ -25,8 +28,8 @@ export type SlashCommand = {
 };
 
 export const SLASH_COMMANDS: readonly SlashCommand[] = [
-  { command: ROUTES.sessions, description: "Browse and resume past sessions" },
-  { command: MODEL_COMMAND, description: "Switch the active model" },
+  { command: SESSIONS_COMMAND, description: "Browse and resume past sessions" },
+  { command: MODELS_COMMAND, description: "Switch the active model" },
   { command: ROUTES.custom, description: "Set up an OpenAI-compatible endpoint" },
   { command: ROUTES.login, description: "Update your API key" },
   { command: "/clear", description: "Clear the conversation and return home" },
@@ -40,6 +43,8 @@ export type SlashCommandContext = {
   exit: () => void;
   /** Open the model picker as a dialog over the current screen. Used by `/models`. */
   openModel: () => void;
+  /** Open the session picker as a dialog over the current screen. Used by `/sessions`. */
+  openSessions: () => void;
 };
 
 /**
@@ -50,9 +55,9 @@ export type SlashCommandContext = {
  * name mid-sentence, in quotes, or with a trailing space without triggering it.
  *
  * Most commands are route paths and simply navigate there; `/clear` returns to
- * the home screen, `/exit` quits the app, and `/models` opens the model picker as
- * a dialog. Unknown (but still bare) paths navigate anyway, falling through to
- * the `*` NotFound screen.
+ * the home screen, `/exit` quits the app, and `/sessions`/`/models` open their
+ * pickers as dialogs. Unknown (but still bare) paths navigate anyway, falling
+ * through to the `*` NotFound screen.
  */
 export function runSlashCommand(input: string, ctx: SlashCommandContext): boolean {
   if (slashQuery(input) === null) return false;
@@ -64,7 +69,10 @@ export function runSlashCommand(input: string, ctx: SlashCommandContext): boolea
     case "/clear":
       ctx.navigate(ROUTES.home);
       return true;
-    case MODEL_COMMAND:
+    case SESSIONS_COMMAND:
+      ctx.openSessions();
+      return true;
+    case MODELS_COMMAND:
       ctx.openModel();
       return true;
     default:

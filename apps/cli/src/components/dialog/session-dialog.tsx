@@ -1,9 +1,12 @@
-import { useKeyboard } from "@opentui/react";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router";
-import { listSessions, type SessionSummary } from "../lib/session";
-import { ROUTES } from "../routes";
-import { colors } from "../theme";
+import { listSessions, type SessionSummary } from "../../lib/session";
+import { ROUTES } from "../../routes";
+import { colors } from "../../theme";
+import { useDialog } from "./dialog-context";
+
+/** Visible rows in the session list before it scrolls internally. */
+const LIST_HEIGHT = 12;
 
 /** Compact "3m ago" / "2h ago" / "5d ago" label from an ISO timestamp. */
 function relativeTime(iso: string): string {
@@ -22,11 +25,18 @@ function truncate(text: string, max: number): string {
 }
 
 /**
- * Session picker for `/sessions` — lists past conversations newest-first and
- * navigates into the chosen one. Reached via the `/sessions` slash command.
+ * Body slot for the "Sessions" dialog: past conversations listed newest-first as
+ * a scrollable list. Choosing one closes the dialog and navigates into it.
+ *
+ * Extracted from the former `/sessions` screen so the picker lives in a dialog
+ * over the current screen instead of a full-page navigation — bailing out with
+ * esc leaves the live conversation behind it untouched (no remount, no reload).
+ * The dialog chrome (title, `esc`) is owned by `Dialog`; this only renders the
+ * list.
  */
-export function SessionList() {
+export function SessionListBody() {
   const navigate = useNavigate();
+  const { close } = useDialog();
   const [sessions, setSessions] = useState<SessionSummary[] | null>(null);
 
   useEffect(() => {
@@ -43,26 +53,10 @@ export function SessionList() {
     };
   }, []);
 
-  useKeyboard((key) => {
-    if (key.name === "escape") navigate(ROUTES.home);
-  });
-
-  if (sessions === null) {
-    return (
-      <box flexGrow={1} alignItems="center" justifyContent="center">
-        <text fg={colors.muted}>…loading sessions</text>
-      </box>
-    );
-  }
+  if (sessions === null) return <text fg={colors.muted}>…loading sessions</text>;
 
   if (sessions.length === 0) {
-    return (
-      <box flexGrow={1} flexDirection="column" alignItems="center" justifyContent="center" gap={1}>
-        <text fg={colors.accent}>No sessions yet</text>
-        <text fg={colors.muted}>Start a conversation from the home screen.</text>
-        <text fg={colors.muted}>esc to go back</text>
-      </box>
-    );
+    return <text fg={colors.muted}>No sessions yet — start a conversation from the home screen.</text>;
   }
 
   const options = sessions.map((session) => ({
@@ -72,20 +66,21 @@ export function SessionList() {
   }));
 
   return (
-    <box flexGrow={1} flexDirection="column" padding={1} gap={1}>
-      <text fg={colors.accent}>Sessions</text>
+    <box flexDirection="column" gap={1}>
       <select
-        flexGrow={1}
+        height={LIST_HEIGHT}
         focused
         options={options}
         showScrollIndicator
         selectedBackgroundColor={colors.accent}
         selectedTextColor="#000000"
         onSelect={(_index, option) => {
-          if (option) navigate(ROUTES.session(option.value as string));
+          if (!option) return;
+          close();
+          navigate(ROUTES.session(option.value as string));
         }}
       />
-      <text fg={colors.muted}>↑/↓ to navigate · enter to open · esc to go back</text>
+      <text fg={colors.muted}>↑/↓ to navigate · enter to open · esc to close</text>
     </box>
   );
 }
