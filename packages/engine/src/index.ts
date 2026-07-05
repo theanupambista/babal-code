@@ -7,6 +7,7 @@ export { runAgent } from "./agent";
 export { clearReadTracker } from "./read-tracker";
 export { loadMessages, listSessions, type SessionSummary } from "./session/store";
 export { WORKSPACE_ROOT } from "./workspace";
+export { listWorkspaceFiles } from "./tools/glob";
 export { MODEL_ID } from "./constants";
 export {
   PROVIDERS,

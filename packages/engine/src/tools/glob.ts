@@ -17,6 +17,23 @@ import { runRipgrep, VCS_DIRECTORIES_TO_EXCLUDE } from "./ripgrep";
 /** Cap the number of files returned so a broad pattern does not flood the context. */
 const MAX_RESULTS = 200;
 
+/**
+ * List every (non-ignored) file in the workspace, workspace-relative, honouring
+ * `.gitignore` and skipping VCS directories — the same corpus the `glob` tool
+ * searches, but unfiltered. Intended for UI-side autocomplete (e.g. the CLI's
+ * `@`-file mention menu), which filters and ranks the list itself. Unsorted:
+ * callers rank as they see fit. Throws if ripgrep cannot be started.
+ */
+export async function listWorkspaceFiles(): Promise<string[]> {
+  const args = ["--files", "--hidden"];
+  for (const dir of VCS_DIRECTORIES_TO_EXCLUDE) args.push("--glob", `!${dir}`);
+  args.push(".");
+  const files = await runRipgrep(args, WORKSPACE_ROOT);
+  // Normalise Windows separators to `/` so paths read and mention uniformly across
+  // platforms; the file tools resolve either form back to the same file anyway.
+  return files.map((p) => p.replaceAll("\\", "/"));
+}
+
 export const globTool = tool({
   description:
     "Find files by glob pattern (e.g. '**/*.ts', 'src/**/*.test.ts'). Returns matching " +

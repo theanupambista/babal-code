@@ -1,13 +1,21 @@
 import type { TextareaRenderable } from "@opentui/core";
 import { useKeyboard } from "@opentui/react";
-import { getMode, getModelDisplayLabel, getModelSelection, getNextModeId } from "@babalcode/engine";
+import {
+  getMode,
+  getModelDisplayLabel,
+  getModelSelection,
+  getNextModeId,
+  listWorkspaceFiles,
+} from "@babalcode/engine";
 import type { ModeId } from "@babalcode/engine";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { filterSlashCommands, slashQuery } from "../../commands";
+import { activeMention, rankFiles } from "../../mentions";
 import { useIsActiveLayer, useLayerKeyboard } from "../../services/layer";
 import { colors, modeColor as modeColorFor } from "../../theme";
 import { EmptyBorder } from "../border";
 import { BAR_CONTENT_PADDING } from "./chat-message";
+import { FileMentionMenu } from "./file-mention-menu";
 import { SlashCommandMenu } from "./slash-command-menu";
 
 type ChatTextareaProps = {
@@ -45,6 +53,9 @@ const KEY_BINDINGS = [
 const MIN_ROWS = 2;
 const MAX_ROWS = 10;
 
+/** Most file rows shown in the `@`-mention menu before the list is capped. */
+const MAX_MENTION_ROWS = 10;
+
 /**
  * Multi-line chat input, modelled on opencode's prompt.
  *
@@ -78,6 +89,15 @@ export function ChatTextarea({
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [dismissed, setDismissed] = useState(false);
 
+  // `@`-file mention autocomplete. `mention` is the live token the caret sits in
+  // (null = no mention); `mentionIndex` is the highlighted row; `mentionDismissed`
+  // hides the menu after Escape until the next keystroke. `files` is the workspace
+  // file corpus, (re)loaded lazily each time a mention opens.
+  const [mention, setMention] = useState<ReturnType<typeof activeMention>>(null);
+  const [mentionIndex, setMentionIndex] = useState(0);
+  const [mentionDismissed, setMentionDismissed] = useState(false);
+  const [files, setFiles] = useState<string[]>([]);
+
   // Effective focus = the parent's intent *and* this input's layer being on top.
   // The layer check is what keeps the cursor from bleeding through an open dialog:
   // once a dialog stacks above, `useIsActiveLayer` flips false and we unfocus,
@@ -90,6 +110,32 @@ export function ChatTextarea({
     [query, dismissed],
   );
   const menuOpen = isFocused && commands.length > 0;
+
+  const mentionFiles = useMemo(
+    () => (mention && !mentionDismissed ? rankFiles(files, mention.query, MAX_MENTION_ROWS) : []),
+    [mention, mentionDismissed, files],
+  );
+  const mentionOpen = isFocused && mentionFiles.length > 0;
+
+  // Load the workspace file list whenever a mention opens (the caret enters a
+  // fresh `@` token). Re-reading each time keeps the list current as the agent
+  // edits the tree; it's a cheap in-process ripgrep, and setState bails out when
+  // unchanged. A failed listing just leaves the menu empty.
+  const mentionActive = mention !== null;
+  useEffect(() => {
+    if (!mentionActive) return;
+    let cancelled = false;
+    void listWorkspaceFiles()
+      .then((list) => {
+        if (!cancelled) setFiles(list);
+      })
+      .catch(() => {
+        if (!cancelled) setFiles([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [mentionActive]);
 
   // Read the active model for the footer, re-reading whenever the input regains focus.
   // The model picker is a dialog that unfocuses this input while open (see `focused`),
@@ -122,10 +168,17 @@ export function ChatTextarea({
   // The textarea is uncontrolled, so this is our only view of its value; any
   // keystroke also clears an earlier Escape dismissal.
   const handleContentChange = () => {
-    const text = textareaRef.current?.plainText ?? "";
+    const ta = textareaRef.current;
+    const text = ta?.plainText ?? "";
     setQuery(slashQuery(text));
     setSelectedIndex(0);
     setDismissed(false);
+    // The caret drives which `@` (if any) is live — a mention only autocompletes
+    // the token the caret is sitting at the end of.
+    const caret = ta?.cursorOffset ?? text.length;
+    setMention(activeMention(text, caret));
+    setMentionIndex(0);
+    setMentionDismissed(false);
   };
 
   // Execute the highlighted command by routing it through `onSubmit` — the parent
@@ -139,6 +192,24 @@ export function ChatTextarea({
     setGeneration((g) => g + 1);
   };
 
+  // Replace the live `@query` token with the chosen path (kept as an `@`-mention
+  // so it reads as a reference), plus a trailing space to keep typing. Mutates the
+  // uncontrolled textarea in place via `replaceText` (undoable) rather than
+  // remounting it, then parks the caret after the inserted token so the recomputed
+  // mention closes on its own.
+  const acceptMention = (index: number = mentionIndex) => {
+    const path = mentionFiles[index];
+    const ta = textareaRef.current;
+    if (!path || !mention || !ta) return;
+    const text = ta.plainText;
+    const token = `@${path} `;
+    const next = text.slice(0, mention.start) + token + text.slice(mention.end);
+    ta.replaceText(next);
+    ta.cursorOffset = mention.start + token.length;
+    setMention(null);
+    setMentionDismissed(true);
+  };
+
   // Keyboard handling splits on whether the menu is open. Only the focused input
   // reacts, so the home and chat textareas don't both respond (all `useKeyboard`
   // handlers co-fire). `useKeyboard` invokes the latest closure, so `modeId`,
@@ -146,6 +217,16 @@ export function ChatTextarea({
   // logic — the textarea still processes the key for cursor movement/editing.
   useKeyboard((key) => {
     if (!isFocused) return;
+    // The `@`-mention menu takes navigation before the slash menu and the mode
+    // cycle; only one of the two menus is ever open (slash needs a leading `/`).
+    if (mentionOpen) {
+      if (key.name === "up") setMentionIndex((i) => Math.max(0, i - 1));
+      else if (key.name === "down")
+        setMentionIndex((i) => Math.min(mentionFiles.length - 1, i + 1));
+      else if (key.name === "tab") acceptMention();
+      else if (key.name === "escape") setMentionDismissed(true);
+      return;
+    }
     if (menuOpen) {
       // Menu navigation: arrows move the highlight, Tab completes, Escape dismisses.
       // (Enter is handled by the textarea's submit → `handleSubmit` below.)
@@ -169,12 +250,18 @@ export function ChatTextarea({
     setGeneration((g) => g + 1);
     setQuery(null);
     setDismissed(true);
+    setMention(null);
+    setMentionDismissed(true);
     return true;
   });
 
   const handleSubmit = () => {
-    // With the menu open, Enter confirms the highlighted command instead of
-    // submitting the raw text.
+    // With a menu open, Enter confirms the highlighted row instead of submitting.
+    // Mention takes priority (they never co-occur, but be explicit).
+    if (mentionOpen) {
+      acceptMention();
+      return;
+    }
     if (menuOpen) {
       acceptSelected();
       return;
@@ -217,6 +304,32 @@ export function ChatTextarea({
               selectedIndex={selectedIndex}
               onHighlight={setSelectedIndex}
               onSelect={acceptSelected}
+            />
+          </box>
+        </box>
+      )}
+      {/* `@`-mention file menu — same floating bar as the slash menu above; the
+          two never open together (slash needs a leading `/`). */}
+      {mentionOpen && (
+        <box
+          position="absolute"
+          left={0}
+          bottom="100%"
+          width="100%"
+          flexDirection="row"
+          zIndex={10}
+        >
+          <box
+            border={["left"]}
+            borderColor={colors.muted}
+            customBorderChars={{ ...EmptyBorder, vertical: "┃" }}
+          />
+          <box backgroundColor={colors.panel} paddingX={BAR_CONTENT_PADDING} flexGrow={1}>
+            <FileMentionMenu
+              files={mentionFiles}
+              selectedIndex={mentionIndex}
+              onHighlight={setMentionIndex}
+              onSelect={acceptMention}
             />
           </box>
         </box>
