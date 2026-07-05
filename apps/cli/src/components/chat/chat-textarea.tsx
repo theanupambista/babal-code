@@ -110,8 +110,8 @@ export function ChatTextarea({
 
   // Execute the highlighted command by routing it through `onSubmit` — the parent
   // treats a leading-`/` value as a route to navigate to. Also clears the input.
-  const acceptSelected = () => {
-    const cmd = commands[selectedIndex];
+  const acceptSelected = (index: number = selectedIndex) => {
+    const cmd = commands[index];
     if (!cmd) return;
     onSubmit?.(cmd.command, modeId);
     setQuery(null);
@@ -158,18 +158,32 @@ export function ChatTextarea({
   const modeColor = modeColorFor(modeId);
 
   return (
-    <box flexShrink={0} flexDirection="column" width="100%">
+    <box flexShrink={0} flexDirection="column" width="100%" position="relative">
       {/* Menu sits in its own bar so its left border reads as a distinct accent,
-          independent of the mode-coloured border on the input below. */}
+          independent of the mode-coloured border on the input below. It floats
+          absolutely just above the input (`bottom="100%"`) so opening it overlays
+          the content above rather than shifting the whole layout. */}
       {menuOpen && (
-        <box flexDirection="row" width="100%">
+        <box
+          position="absolute"
+          left={0}
+          bottom="100%"
+          width="100%"
+          flexDirection="row"
+          zIndex={10}
+        >
           <box
             border={["left"]}
             borderColor={colors.muted}
             customBorderChars={{ ...EmptyBorder, vertical: "┃" }}
           />
           <box backgroundColor={colors.panel} paddingX={BAR_CONTENT_PADDING} flexGrow={1}>
-            <SlashCommandMenu commands={commands} selectedIndex={selectedIndex} />
+            <SlashCommandMenu
+              commands={commands}
+              selectedIndex={selectedIndex}
+              onHighlight={setSelectedIndex}
+              onSelect={acceptSelected}
+            />
           </box>
         </box>
       )}

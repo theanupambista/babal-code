@@ -6,6 +6,10 @@ type SlashCommandMenuProps = {
   commands: readonly SlashCommand[];
   /** Index of the highlighted row. */
   selectedIndex: number;
+  /** Move the highlight to a row (hovering with the mouse). */
+  onHighlight?: (index: number) => void;
+  /** Accept a row (clicking with the mouse). */
+  onSelect?: (index: number) => void;
 };
 
 /** Column width the command names are padded to so descriptions line up. */
@@ -21,7 +25,12 @@ const NAME_COLUMN = 14;
  * command set is small, so a padded two-column list reads clearly without a table
  * or fuzzy-match library.
  */
-export function SlashCommandMenu({ commands, selectedIndex }: SlashCommandMenuProps) {
+export function SlashCommandMenu({
+  commands,
+  selectedIndex,
+  onHighlight,
+  onSelect,
+}: SlashCommandMenuProps) {
   if (commands.length === 0) return null;
 
   return (
@@ -34,6 +43,8 @@ export function SlashCommandMenu({ commands, selectedIndex }: SlashCommandMenuPr
             flexDirection="row"
             width="100%"
             backgroundColor={selected ? colors.accent : undefined}
+            onMouseMove={() => onHighlight?.(i)}
+            onMouseDown={() => onSelect?.(i)}
           >
             <text fg={selected ? colors.background : colors.text}>
               {cmd.command.padEnd(NAME_COLUMN)}
