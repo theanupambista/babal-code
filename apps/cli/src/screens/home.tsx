@@ -21,7 +21,7 @@ import { ROUTES } from "../routes";
 export function Home() {
   const navigate = useNavigate();
   const renderer = useRenderer();
-  const { dialog, open } = useDialog();
+  const { open } = useDialog();
   const [modeId, setModeId] = useState<ModeId>(DEFAULT_MODE_ID);
 
   const openModel = () => open({ title: "Select model", body: <ModelDialogBody /> });
@@ -47,12 +47,7 @@ export function Home() {
       </box>
       <box alignItems="center" width="100%">
         <box width="100%" maxWidth={CHAT_MAX_WIDTH}>
-          <ChatTextarea
-            modeId={modeId}
-            onModeChange={setModeId}
-            onSubmit={handleSubmit}
-            focused={dialog === null}
-          />
+          <ChatTextarea modeId={modeId} onModeChange={setModeId} onSubmit={handleSubmit} />
         </box>
       </box>
     </box>

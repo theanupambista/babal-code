@@ -1,4 +1,5 @@
 import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from "react";
+import { Layer } from "../../services/layer";
 import { DialogOverlay } from "./dialog-overlay";
 import { Dialog } from "./dialog";
 
@@ -43,11 +44,16 @@ export function DialogProvider({ children }: { children: ReactNode }) {
     <DialogContext.Provider value={value}>
       {children}
       {dialog && (
-        <DialogOverlay>
-          <Dialog title={dialog.title} onClose={close}>
-            {dialog.body}
-          </Dialog>
-        </DialogOverlay>
+        // A dialog is its own layer: it sits above the screen in the stack, so
+        // the screen behind it goes inert (unfocused, keyboard-trapped) and the
+        // dialog's own Esc/Ctrl+C handlers take precedence.
+        <Layer>
+          <DialogOverlay>
+            <Dialog title={dialog.title} onClose={close}>
+              {dialog.body}
+            </Dialog>
+          </DialogOverlay>
+        </Layer>
       )}
     </DialogContext.Provider>
   );

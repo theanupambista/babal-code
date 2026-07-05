@@ -1,5 +1,5 @@
-import { useKeyboard } from "@opentui/react";
 import type { ReactNode } from "react";
+import { useLayerKeyboard } from "../../services/layer";
 import { colors } from "../../theme";
 
 type DialogProps = {
@@ -23,8 +23,14 @@ const DIALOG_WIDTH = 60;
  * scrim/centering is the `DialogOverlay`'s job.
  */
 export function Dialog({ title, onClose, children }: DialogProps) {
-  useKeyboard((key) => {
-    if (key.name === "escape") onClose();
+  // Esc dismisses, and — because the dialog is the active layer — so does Ctrl+C:
+  // consuming it here overrides the app-level quit so it just closes the dialog.
+  // Both are consumed so they don't reach the screen (or the exit) beneath.
+  useLayerKeyboard((key) => {
+    if (key.name === "escape" || (key.ctrl && key.name === "c")) {
+      onClose();
+      return true;
+    }
   });
 
   return (

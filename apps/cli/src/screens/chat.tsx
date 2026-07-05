@@ -1,6 +1,6 @@
 import { useChat } from "@ai-sdk/react";
 import type { ScrollBoxRenderable } from "@opentui/core";
-import { useKeyboard, useRenderer } from "@opentui/react";
+import { useRenderer } from "@opentui/react";
 import { clearReadTracker, DEFAULT_MODE_ID, isModeId, permission } from "@babalcode/engine";
 import type { ModeId } from "@babalcode/engine";
 import { isToolUIPart, type UIMessage } from "ai";
@@ -18,6 +18,7 @@ import {
 } from "../components/chat";
 import { ModelDialogBody, SessionListBody, useDialog } from "../components/dialog";
 import { runSlashCommand } from "../commands";
+import { useLayerKeyboard } from "../services/layer";
 import { loadMessages } from "../lib/session";
 import { InProcessTransport } from "../lib/transport";
 import { colors } from "../theme";
@@ -126,7 +127,7 @@ function ChatView({
 }) {
   const navigate = useNavigate();
   const renderer = useRenderer();
-  const { dialog, open } = useDialog();
+  const { open } = useDialog();
 
   const openModel = () => open({ title: "Select model", body: <ModelDialogBody /> });
   const openSessions = () => open({ title: "Sessions", body: <SessionListBody /> });
@@ -165,8 +166,10 @@ function ChatView({
 
   // ctrl+↑/↓ moves the highlight, ctrl+r expands the selected call. ctrl-modified
   // keys are used so plain arrows stay with the textarea cursor and scrollbox
-  // scroll. `useKeyboard` runs the latest closure, so `selectedId` is never stale.
-  useKeyboard((key) => {
+  // scroll. Scoped to this screen's layer so an open dialog traps it (no tool
+  // navigation behind the modal); it runs the latest closure, so `selectedId` is
+  // never stale. Non-consuming — the textarea/scrollbox still see the key.
+  useLayerKeyboard((key) => {
     if (!key.ctrl) return;
     if (key.name === "up" || key.name === "down") {
       setSelectedId((cur) => {
@@ -195,7 +198,8 @@ function ChatView({
   // Answer the active permission prompt: y = allow once, a = allow always
   // (persisted for this project), n = deny. The textarea is unfocused while a
   // prompt is up (see `focused` below), so these keys don't land as input text.
-  useKeyboard((key) => {
+  // Layer-scoped so a dialog opened over the chat traps these keys.
+  useLayerKeyboard((key) => {
     if (!activePermission) return;
     if (key.name === "y") permission.reply(activePermission.id, { type: "allow", scope: "once" });
     else if (key.name === "a")
@@ -239,7 +243,7 @@ function ChatView({
           modeId={modeId}
           onModeChange={setModeId}
           onSubmit={handleSubmit}
-          focused={!activePermission && dialog === null}
+          focused={!activePermission}
         />
       }
       banner={

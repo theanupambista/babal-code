@@ -4,6 +4,7 @@ import { getMode, getModelDisplayLabel, getModelSelection, getNextModeId } from 
 import type { ModeId } from "@babalcode/engine";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { filterSlashCommands, slashQuery } from "../../commands";
+import { useIsActiveLayer, useLayerKeyboard } from "../../services/layer";
 import { colors, modeColor as modeColorFor } from "../../theme";
 import { EmptyBorder } from "../border";
 import { BAR_CONTENT_PADDING } from "./chat-message";
@@ -17,7 +18,12 @@ type ChatTextareaProps = {
    */
   onSubmit?: (value: string, modeId: ModeId) => void;
   placeholder?: string;
-  /** Whether the textarea owns keyboard focus. */
+  /**
+   * The parent's intent to focus this input (e.g. no permission prompt is up).
+   * Actual focus additionally requires this input's layer to be on top — that
+   * part is handled internally via the layer service, so parents no longer pass
+   * dialog state here.
+   */
   focused?: boolean;
   /** Active mode (controlled by the parent, which owns the state). */
   modeId: ModeId;
@@ -72,11 +78,18 @@ export function ChatTextarea({
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [dismissed, setDismissed] = useState(false);
 
+  // Effective focus = the parent's intent *and* this input's layer being on top.
+  // The layer check is what keeps the cursor from bleeding through an open dialog:
+  // once a dialog stacks above, `useIsActiveLayer` flips false and we unfocus,
+  // rather than relying on the parent to thread the dialog state in by hand.
+  const layerActive = useIsActiveLayer();
+  const isFocused = focused && layerActive;
+
   const commands = useMemo(
     () => (query !== null && !dismissed ? filterSlashCommands(query) : []),
     [query, dismissed],
   );
-  const menuOpen = focused && commands.length > 0;
+  const menuOpen = isFocused && commands.length > 0;
 
   // Read the active model for the footer, re-reading whenever the input regains focus.
   // The model picker is a dialog that unfocuses this input while open (see `focused`),
@@ -85,7 +98,7 @@ export function ChatTextarea({
   // the config is a plain file with no change notification. A re-read is a cheap in-process
   // read, and setState bails out when the label is unchanged, so there's no flicker.
   useEffect(() => {
-    if (!focused) return;
+    if (!isFocused) return;
     let cancelled = false;
     void getModelSelection()
       .then(({ provider, model }) => getModelDisplayLabel(provider, model))
@@ -103,7 +116,7 @@ export function ChatTextarea({
     return () => {
       cancelled = true;
     };
-  }, [focused]);
+  }, [isFocused]);
 
   // Read the textarea's live text on every edit to drive the autocomplete menu.
   // The textarea is uncontrolled, so this is our only view of its value; any
@@ -132,7 +145,7 @@ export function ChatTextarea({
   // `menuOpen`, and `selectedIndex` are never stale. Returning here only skips our
   // logic — the textarea still processes the key for cursor movement/editing.
   useKeyboard((key) => {
-    if (!focused) return;
+    if (!isFocused) return;
     if (menuOpen) {
       // Menu navigation: arrows move the highlight, Tab completes, Escape dismisses.
       // (Enter is handled by the textarea's submit → `handleSubmit` below.)
@@ -143,6 +156,20 @@ export function ChatTextarea({
       return;
     }
     if (key.name === "tab") onModeChange(getNextModeId(modeId, key.shift ? -1 : 1));
+  });
+
+  // Ctrl+C clears the input instead of quitting — but only when it has content,
+  // and only when this input is the focused, active-layer one. Consuming the key
+  // (return true) overrides the app-level quit; an empty input declines it, so a
+  // second Ctrl+C falls through the stack and exits (the footer's promise). The
+  // textarea is uncontrolled, so we clear by remounting it empty via `generation`.
+  useLayerKeyboard((key) => {
+    if (!isFocused || !key.ctrl || key.name !== "c") return;
+    if ((textareaRef.current?.plainText ?? "").length === 0) return;
+    setGeneration((g) => g + 1);
+    setQuery(null);
+    setDismissed(true);
+    return true;
   });
 
   const handleSubmit = () => {
@@ -207,7 +234,7 @@ export function ChatTextarea({
             key={generation}
             ref={textareaRef}
             placeholder={placeholder}
-            focused={focused}
+            focused={isFocused}
             minHeight={MIN_ROWS}
             maxHeight={MAX_ROWS}
             wrapMode="word"
