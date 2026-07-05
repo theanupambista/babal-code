@@ -10,14 +10,13 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router";
 import { MaskedInput } from "../components/masked-input";
 import { TextInput } from "../components/text-input";
-import { ROUTES } from "../routes";
 import { colors } from "../theme";
 
 type Step = "baseURL" | "model" | "apiKey";
 
 /**
  * `/custom` — configure an OpenAI-compatible endpoint: base URL, model id, optional API key.
- * Reached from `/model` when choosing “Set up custom endpoint”.
+ * Reached from the model picker dialog when choosing “Set up custom endpoint”.
  */
 export function CustomSetup() {
   const navigate = useNavigate();
@@ -44,7 +43,7 @@ export function CustomSetup() {
     };
   }, []);
 
-  const goBack = () => navigate(ROUTES.model);
+  const goBack = () => navigate(-1);
 
   const finish = (apiKey: string) => {
     void setCustomProvider({ baseURL, model: modelId })

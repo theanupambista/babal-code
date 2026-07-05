@@ -16,6 +16,7 @@ import {
   renderMessageParts,
   ToolSelectionContext,
 } from "../components/chat";
+import { ModelDialogBody, useDialog } from "../components/dialog";
 import { runSlashCommand } from "../commands";
 import { loadMessages } from "../lib/session";
 import { InProcessTransport } from "../lib/transport";
@@ -111,6 +112,9 @@ function ChatView({
 }) {
   const navigate = useNavigate();
   const renderer = useRenderer();
+  const { dialog, open } = useDialog();
+
+  const openModel = () => open({ title: "Select model", body: <ModelDialogBody /> });
 
   const [modeId, setModeId] = useState<ModeId>(initialModeId ?? DEFAULT_MODE_ID);
 
@@ -203,7 +207,7 @@ function ChatView({
     if (isChatBusy(status)) return;
     // Only a bare slash command runs as a command; the same text with trailing
     // args, in quotes, or mid-sentence falls through to be sent as a message.
-    if (runSlashCommand(value, { navigate, exit: () => renderer.destroy() })) return;
+    if (runSlashCommand(value, { navigate, exit: () => renderer.destroy(), openModel })) return;
     const text = value.trim();
     if (!text) return;
     sendMessage({ text, metadata: { modeId: mode } }, { body: { modeId: mode } });
@@ -219,7 +223,7 @@ function ChatView({
           modeId={modeId}
           onModeChange={setModeId}
           onSubmit={handleSubmit}
-          focused={!activePermission}
+          focused={!activePermission && dialog === null}
         />
       }
       banner={

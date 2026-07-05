@@ -6,6 +6,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router";
 import { runSlashCommand } from "../commands";
 import { CHAT_MAX_WIDTH, ChatTextarea } from "../components/chat";
+import { ModelDialogBody, useDialog } from "../components/dialog";
 import { Logo } from "../components/logo";
 import { ROUTES } from "../routes";
 
@@ -20,13 +21,16 @@ import { ROUTES } from "../routes";
 export function Home() {
   const navigate = useNavigate();
   const renderer = useRenderer();
+  const { dialog, open } = useDialog();
   const [modeId, setModeId] = useState<ModeId>(DEFAULT_MODE_ID);
+
+  const openModel = () => open({ title: "Select model", body: <ModelDialogBody /> });
 
   const handleSubmit = (value: string, modeId: ModeId) => {
     // A bare slash command runs as a command (navigate to its route, or `/clear`/
     // `/exit`); the same text with trailing args, in quotes, or mid-sentence is
     // not bare and falls through to be submitted as a normal message.
-    if (runSlashCommand(value, { navigate, exit: () => renderer.destroy() })) return;
+    if (runSlashCommand(value, { navigate, exit: () => renderer.destroy(), openModel })) return;
     const text = value.trim();
     if (!text) return;
     // Carry the chosen mode so the Chat screen's first turn runs in it.
@@ -41,7 +45,12 @@ export function Home() {
       </box>
       <box alignItems="center" width="100%">
         <box width="100%" maxWidth={CHAT_MAX_WIDTH}>
-          <ChatTextarea modeId={modeId} onModeChange={setModeId} onSubmit={handleSubmit} />
+          <ChatTextarea
+            modeId={modeId}
+            onModeChange={setModeId}
+            onSubmit={handleSubmit}
+            focused={dialog === null}
+          />
         </box>
       </box>
     </box>

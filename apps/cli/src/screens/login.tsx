@@ -11,7 +11,7 @@ import { colors } from "../theme";
  * field and store it in the OS keychain. Also the first-run screen when no key is
  * resolvable (see the boot routing in `router.tsx`), where the selection is still the
  * default provider. The key is namespaced per provider, so switching model via
- * `/model` and re-running `/login` sets the key for that provider.
+ * `/models` and re-running `/login` sets the key for that provider.
  */
 export function Login() {
   const navigate = useNavigate();

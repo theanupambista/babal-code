@@ -6,7 +6,6 @@ import { Chat } from "./screens/chat";
 import { CustomSetup } from "./screens/custom-setup";
 import { Home } from "./screens/home";
 import { Login } from "./screens/login";
-import { ModelSelect } from "./screens/model-select";
 import { NotFound } from "./screens/not-found";
 import { SessionList } from "./screens/session-list";
 
@@ -23,7 +22,6 @@ export async function createAppRouter() {
           { index: true, element: <Home /> },
           { path: "sessions", element: <SessionList /> },
           { path: "sessions/:id", element: <Chat /> },
-          { path: "model", element: <ModelSelect /> },
           { path: "custom", element: <CustomSetup /> },
           { path: "login", element: <Login /> },
           { path: "*", element: <NotFound /> },
