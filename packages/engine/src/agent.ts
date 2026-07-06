@@ -7,7 +7,7 @@ import {
   type UIMessageChunk,
 } from "ai";
 import { getModelSelection } from "./config";
-import { resolveApiKey } from "./credentials";
+import { resolveApiKey, resolveCustomModelKey } from "./credentials";
 import { getMode } from "./modes";
 import { permission } from "./permission";
 import { PROVIDERS, resolveLanguageModel } from "./providers";
@@ -42,9 +42,14 @@ export async function runAgent({
   // Resolve the provider/model (from `/model` config) and key (env → keychain) per
   // turn, so switching either via slash command takes effect on the next message
   // with no restart. A rejected promise here surfaces as the CLI's error banner.
-  const { provider, model } = await getModelSelection();
+  const { provider, model, customModelId } = await getModelSelection();
   const providerInfo = PROVIDERS[provider];
-  const apiKey = resolveApiKey(provider);
+  const apiKey =
+    provider === "custom"
+      ? customModelId
+        ? resolveCustomModelKey(customModelId)
+        : resolveApiKey("custom")
+      : resolveApiKey(provider);
   if (providerInfo.requiresApiKey !== false && !apiKey) {
     throw new Error(`No API key for ${providerInfo.label}. Run /login to add one.`);
   }

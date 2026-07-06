@@ -13,6 +13,9 @@ import { ROUTES } from "./routes";
 /** `/models` — an action (opens the model picker dialog), not a route. */
 export const MODELS_COMMAND = "/models";
 
+/** `/custom` — an action (opens the model picker dialog on its add-model view), not a route. */
+export const CUSTOM_COMMAND = "/custom";
+
 /** `/sessions` — an action (opens the session picker dialog), not a route. */
 export const SESSIONS_COMMAND = "/sessions";
 
@@ -30,7 +33,7 @@ export type SlashCommand = {
 export const SLASH_COMMANDS: readonly SlashCommand[] = [
   { command: SESSIONS_COMMAND, description: "Browse and resume past sessions" },
   { command: MODELS_COMMAND, description: "Switch the active model" },
-  { command: ROUTES.custom, description: "Set up an OpenAI-compatible endpoint" },
+  { command: CUSTOM_COMMAND, description: "Set up an OpenAI-compatible endpoint" },
   { command: ROUTES.login, description: "Update your API key" },
   { command: "/clear", description: "Clear the conversation and return home" },
   { command: "/exit", description: "Quit babal code" },
@@ -41,8 +44,11 @@ export type SlashCommandContext = {
   navigate: (path: string) => void;
   /** Tear down the renderer and quit, restoring the terminal. Used by `/exit`. */
   exit: () => void;
-  /** Open the model picker as a dialog over the current screen. Used by `/models`. */
-  openModel: () => void;
+  /**
+   * Open the model picker as a dialog over the current screen. Used by `/models`
+   * (default list view) and `/custom` (`"add"` — jump straight to the add-model form).
+   */
+  openModel: (view?: "add") => void;
   /** Open the session picker as a dialog over the current screen. Used by `/sessions`. */
   openSessions: () => void;
 };
@@ -55,9 +61,10 @@ export type SlashCommandContext = {
  * name mid-sentence, in quotes, or with a trailing space without triggering it.
  *
  * Most commands are route paths and simply navigate there; `/clear` returns to
- * the home screen, `/exit` quits the app, and `/sessions`/`/models` open their
- * pickers as dialogs. Unknown (but still bare) paths navigate anyway, falling
- * through to the `*` NotFound screen.
+ * the home screen, `/exit` quits the app, `/sessions`/`/models` open their
+ * pickers as dialogs, and `/custom` opens the model picker on its add-model view.
+ * Unknown (but still bare) paths navigate anyway, falling through to the `*`
+ * NotFound screen.
  */
 export function runSlashCommand(input: string, ctx: SlashCommandContext): boolean {
   if (slashQuery(input) === null) return false;
@@ -74,6 +81,9 @@ export function runSlashCommand(input: string, ctx: SlashCommandContext): boolea
       return true;
     case MODELS_COMMAND:
       ctx.openModel();
+      return true;
+    case CUSTOM_COMMAND:
+      ctx.openModel("add");
       return true;
     default:
       ctx.navigate(path);

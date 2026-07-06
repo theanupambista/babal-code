@@ -14,6 +14,7 @@ export {
   DEFAULT_PROVIDER,
   DEFAULT_MODEL,
   CUSTOM_SETUP_MODEL_ID,
+  MANAGE_CUSTOM_MODELS_ID,
   resolveLanguageModel,
   listModelOptions,
   getModelDisplayLabel,
@@ -22,7 +23,22 @@ export {
   type ModelInfo,
   type ModelOption,
 } from "./providers";
-export { getModelSelection, setModelSelection, getCustomConfig, isCustomReady, setCustomProvider } from "./config";
+export {
+  getModelSelection,
+  setModelSelection,
+  selectCustomModel,
+  getSelectedCustomModel,
+  getCustomConfig,
+  isCustomReady,
+  setCustomProvider,
+  listCustomModels,
+  getCustomModel,
+  addCustomModel,
+  updateCustomModel,
+  deleteCustomModel,
+  type CustomModel,
+  type CustomConfig,
+} from "./config";
 export { configFile } from "./session/paths";
 export {
   MODES,
@@ -33,7 +49,20 @@ export {
   type Mode,
   type ModeId,
 } from "./modes";
-export { setApiKey, deleteApiKey, resolveApiKey, getStoredApiKey, hasApiKey, canStartApp, hasProviderAuth } from "./credentials";
+export {
+  setApiKey,
+  deleteApiKey,
+  resolveApiKey,
+  getStoredApiKey,
+  hasApiKey,
+  canStartApp,
+  hasProviderAuth,
+  setCustomModelKey,
+  getCustomModelKey,
+  deleteCustomModelKey,
+  resolveCustomModelKey,
+  hasCustomModelKey,
+} from "./credentials";
 export {
   permission,
   PermissionDeniedError,

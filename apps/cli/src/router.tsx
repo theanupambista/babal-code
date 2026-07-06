@@ -3,7 +3,6 @@ import { createMemoryRouter } from "react-router";
 import { RootLayout } from "./layouts/root-layout";
 import { ROUTES } from "./routes";
 import { Chat } from "./screens/chat";
-import { CustomSetup } from "./screens/custom-setup";
 import { Home } from "./screens/home";
 import { Login } from "./screens/login";
 import { NotFound } from "./screens/not-found";
@@ -20,7 +19,6 @@ export async function createAppRouter() {
         children: [
           { index: true, element: <Home /> },
           { path: "sessions/:id", element: <Chat /> },
-          { path: "custom", element: <CustomSetup /> },
           { path: "login", element: <Login /> },
           { path: "*", element: <NotFound /> },
         ],

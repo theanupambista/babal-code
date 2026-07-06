@@ -9,8 +9,6 @@ export const ROUTES = {
   home: "/",
   /** A conversation screen. The id is client-generated and used as the session id. */
   session: (id: string) => `/sessions/${id}`,
-  /** OpenAI-compatible endpoint setup — base URL, model id, optional API key. */
-  custom: "/custom",
   /** API-key entry — masked field; stores the key in the OS keychain. */
   login: "/login",
 } as const;

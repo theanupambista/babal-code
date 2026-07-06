@@ -1,5 +1,5 @@
 import type { ScrollBoxRenderable } from "@opentui/core";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import { useIsActiveLayer, useLayerKeyboard } from "../../services/layer";
 import { colors } from "../../theme";
 
@@ -11,6 +11,11 @@ export type SearchListItem = {
   description?: string;
   /** Opaque value handed back to `onSelect`. */
   value: string;
+  /**
+   * Optional section heading. Consecutive items sharing a section render under a
+   * single heading; a heading only appears when the section has visible matches.
+   */
+  section?: string;
 };
 
 type DialogSearchListProps = {
@@ -24,6 +29,11 @@ type DialogSearchListProps = {
   emptyText?: string;
   /** Visible rows before the list scrolls internally. */
   listHeight?: number;
+  /**
+   * Render each row on a single line (name, then a muted description inline)
+   * instead of stacking the description under the name. Defaults to stacked.
+   */
+  inlineDescription?: boolean;
 };
 
 /** Visible lines in the list before it scrolls internally. */
@@ -64,6 +74,7 @@ export function DialogSearchList({
   placeholder = "Type to search…",
   emptyText = "No matches.",
   listHeight = DEFAULT_LIST_HEIGHT,
+  inlineDescription = false,
 }: DialogSearchListProps) {
   // Focus the input only while this dialog is the active layer — otherwise a
   // dialog stacked on top would leave two live cursors.
@@ -134,32 +145,53 @@ export function DialogSearchList({
         <text fg={colors.muted}>{emptyText}</text>
       ) : (
         <scrollbox ref={scrollRef} height={listHeight}>
-          {filtered.map((item, i) => {
-            const selected = i === clampedIndex;
-            return (
-              <box
-                key={item.value}
-                id={rowId(i)}
-                flexShrink={0}
-                flexDirection="column"
-                width="100%"
-                paddingLeft={1}
-                paddingRight={1}
-                backgroundColor={selected ? colors.accent : undefined}
-                onMouseMove={() => setSelectedIndex(i)}
-                onMouseDown={() => onSelect(item)}
-              >
-                <text wrapMode="none" fg={selected ? colors.background : colors.text}>
-                  {item.name}
-                </text>
-                {item.description ? (
-                  <text wrapMode="none" fg={selected ? colors.background : colors.muted}>
-                    {item.description}
+          {(() => {
+            const rows: ReactNode[] = [];
+            let lastSection: string | undefined;
+            filtered.forEach((item, i) => {
+              if (item.section && item.section !== lastSection) {
+                rows.push(
+                  <text
+                    key={`section-${item.section}`}
+                    wrapMode="none"
+                    fg={colors.muted}
+                    marginTop={rows.length > 0 ? 1 : 0}
+                    paddingLeft={1}
+                  >
+                    <b>{item.section}</b>
+                  </text>,
+                );
+                lastSection = item.section;
+              }
+              const selected = i === clampedIndex;
+              const nameFg = selected ? colors.background : colors.text;
+              const descFg = selected ? colors.background : colors.muted;
+              rows.push(
+                <box
+                  key={item.value}
+                  id={rowId(i)}
+                  flexShrink={0}
+                  flexDirection={inlineDescription ? "row" : "column"}
+                  width="100%"
+                  paddingLeft={1}
+                  paddingRight={1}
+                  backgroundColor={selected ? colors.accent : undefined}
+                  onMouseMove={() => setSelectedIndex(i)}
+                  onMouseDown={() => onSelect(item)}
+                >
+                  <text wrapMode="none" fg={nameFg}>
+                    {item.name}
                   </text>
-                ) : null}
-              </box>
-            );
-          })}
+                  {item.description ? (
+                    <text wrapMode="none" fg={descFg}>
+                      {inlineDescription ? `  ${item.description}` : item.description}
+                    </text>
+                  ) : null}
+                </box>,
+              );
+            });
+            return rows;
+          })()}
         </scrollbox>
       )}
 

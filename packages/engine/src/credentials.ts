@@ -38,6 +38,53 @@ export function deleteApiKey(provider: ProviderId): void {
 }
 
 /**
+ * Custom models each have their own key, namespaced by the model's stable entry id
+ * (account `custom:<id>`) so multiple OpenAI-compatible endpoints don't share one
+ * secret. Same keychain, same degrade-to-env behaviour as the provider keys above.
+ */
+function customModelAccount(id: string): string {
+  return `custom:${id}`;
+}
+
+/** Store (or overwrite) a custom model's key in the OS keychain. */
+export function setCustomModelKey(id: string, key: string): void {
+  new Entry(SERVICE, customModelAccount(id)).setPassword(key);
+}
+
+/** The keychain-stored key for a custom model, or `null` if none / no backend. */
+export function getCustomModelKey(id: string): string | null {
+  try {
+    return new Entry(SERVICE, customModelAccount(id)).getPassword();
+  } catch {
+    return null;
+  }
+}
+
+/** Remove a custom model's key from the keychain; no-op if absent. */
+export function deleteCustomModelKey(id: string): void {
+  try {
+    new Entry(SERVICE, customModelAccount(id)).deletePassword();
+  } catch {
+    // Nothing stored, or no backend — nothing to delete.
+  }
+}
+
+/**
+ * Resolve a custom model's key with the same precedence as providers: the shared
+ * `CUSTOM_API_KEY` env override → the model's keychain entry → not set (`null`).
+ */
+export function resolveCustomModelKey(id: string): string | null {
+  const fromEnv = process.env[PROVIDERS.custom.envVar];
+  if (fromEnv && fromEnv.trim()) return fromEnv;
+  return getCustomModelKey(id);
+}
+
+/** Whether a usable key exists for a custom model (env or keychain). */
+export function hasCustomModelKey(id: string): boolean {
+  return resolveCustomModelKey(id) !== null;
+}
+
+/**
  * Resolve the effective key with the industry-standard precedence:
  * environment variable override → keychain → not set (`null`). The env var wins so
  * CI and scripted runs can force a key without touching the keychain.

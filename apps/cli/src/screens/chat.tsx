@@ -134,7 +134,8 @@ function ChatView({
   const renderer = useRenderer();
   const { open } = useDialog();
 
-  const openModel = () => open({ title: "Select model", body: <ModelDialogBody /> });
+  const openModel = (view?: "add") =>
+    open({ title: "Select model", body: <ModelDialogBody initialView={view} /> });
   const openSessions = () =>
     open({ title: "Sessions", width: SESSION_DIALOG_WIDTH, body: <SessionListBody /> });
 

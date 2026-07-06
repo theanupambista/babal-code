@@ -1,8 +1,27 @@
+import { randomUUID } from "node:crypto";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { DEFAULT_MODEL, DEFAULT_PROVIDER, type ProviderId } from "./providers";
 import { BABALCODE_DIR, configFile } from "./session/paths";
 
-/** OpenAI-compatible endpoint settings from `~/.babalcode/config.json`. */
+/**
+ * A user-added OpenAI-compatible model. Unlike the old single-endpoint design, any
+ * number of these can be stored — the user adds as many as they want. Each entry is
+ * independently selectable and carries its own endpoint; its `id` is the stable handle
+ * used to select, edit, and delete it (and, later, to namespace its API key).
+ */
+export type CustomModel = {
+  id: string;
+  /** OpenAI-compatible base URL (usually ends with /v1). */
+  baseURL: string;
+  /** Model id sent to the API (e.g. "llama3.2"). */
+  model: string;
+  /** Display name for the model in the picker; falls back to `model`. */
+  label?: string;
+  /** Display name for the endpoint/provider; falls back to the custom provider label. */
+  providerLabel?: string;
+};
+
+/** OpenAI-compatible endpoint settings, as consumed by the provider resolver. */
 export type CustomConfig = {
   baseURL: string;
   label?: string;
@@ -11,14 +30,20 @@ export type CustomConfig = {
 
 /**
  * Global (not per-session) preferences persisted as a single JSON blob at
- * `~/.babalcode/config.json` — currently just the default provider + model chosen
- * via `/model`. Kept separate from session history and from credentials (which live
- * in the keychain). Missing / corrupt file is treated as "no preferences yet".
+ * `~/.babalcode/config.json`: the default provider + model chosen via `/model`, plus
+ * the list of user-added custom models. Kept separate from session history and from
+ * credentials (which live in the keychain). Missing / corrupt file is treated as "no
+ * preferences yet".
  */
 type Config = {
   provider?: ProviderId;
+  /** For built-in providers, the model id. For custom, the selected model's api id. */
   model?: string;
-  custom?: CustomConfig;
+  /** When custom is selected, the `id` of the chosen `CustomModel` (disambiguates
+   * two entries that share an api model id but differ by endpoint). */
+  customModelId?: string;
+  /** Every OpenAI-compatible model the user has added. */
+  customModels?: CustomModel[];
 };
 
 async function readConfig(): Promise<Config> {
@@ -29,56 +54,180 @@ async function readConfig(): Promise<Config> {
   }
 }
 
-/** Normalize a custom block; returns null when baseURL is missing or blank. */
-export async function getCustomConfig(): Promise<CustomConfig | null> {
-  const config = await readConfig();
-  const baseURL = config.custom?.baseURL?.trim();
-  if (!baseURL) return null;
-  return {
-    baseURL: baseURL.replace(/\/+$/, ""),
-    label: config.custom?.label,
-    modelLabel: config.custom?.modelLabel,
-  };
+async function writeConfig(config: Config): Promise<void> {
+  await mkdir(BABALCODE_DIR, { recursive: true });
+  await writeFile(configFile(), `${JSON.stringify(config, null, 2)}\n`, "utf8");
 }
 
-/** Whether the custom provider has enough config to run without an API key. */
-export async function isCustomReady(): Promise<boolean> {
-  return (await getCustomConfig()) !== null;
+/** Trim trailing slashes so baseURLs compare and print consistently. */
+function normalizeBaseURL(raw: string): string {
+  return raw.trim().replace(/\/+$/, "");
 }
+
+// ── Custom model CRUD ───────────────────────────────────────────────────────
+
+/** Every custom model the user has added, in insertion order. */
+export async function listCustomModels(): Promise<CustomModel[]> {
+  const { customModels } = await readConfig();
+  return customModels ?? [];
+}
+
+/** A single custom model by its stable id, or `null` if absent. */
+export async function getCustomModel(id: string): Promise<CustomModel | null> {
+  const models = await listCustomModels();
+  return models.find((m) => m.id === id) ?? null;
+}
+
+/** Append a new custom model and return the stored entry (with its generated id). */
+export async function addCustomModel(input: {
+  baseURL: string;
+  model: string;
+  label?: string;
+  providerLabel?: string;
+}): Promise<CustomModel> {
+  const entry: CustomModel = {
+    id: randomUUID(),
+    baseURL: normalizeBaseURL(input.baseURL),
+    model: input.model.trim(),
+    label: input.label?.trim() || undefined,
+    providerLabel: input.providerLabel?.trim() || undefined,
+  };
+  const config = await readConfig();
+  await writeConfig({ ...config, customModels: [...(config.customModels ?? []), entry] });
+  return entry;
+}
+
+/** Patch an existing custom model in place; unknown ids are a no-op. */
+export async function updateCustomModel(
+  id: string,
+  patch: Partial<Omit<CustomModel, "id">>,
+): Promise<void> {
+  const config = await readConfig();
+  const models = config.customModels ?? [];
+  const next = models.map((m) =>
+    m.id === id
+      ? {
+          ...m,
+          ...patch,
+          baseURL: patch.baseURL !== undefined ? normalizeBaseURL(patch.baseURL) : m.baseURL,
+          model: patch.model !== undefined ? patch.model.trim() : m.model,
+        }
+      : m,
+  );
+  await writeConfig({ ...config, customModels: next });
+}
+
+/**
+ * Remove a custom model. If it was the active selection, fall back to the built-in
+ * defaults so the agent never points at a deleted endpoint.
+ */
+export async function deleteCustomModel(id: string): Promise<void> {
+  const config = await readConfig();
+  const next: Config = {
+    ...config,
+    customModels: (config.customModels ?? []).filter((m) => m.id !== id),
+  };
+  if (config.provider === "custom" && config.customModelId === id) {
+    next.provider = DEFAULT_PROVIDER;
+    next.model = DEFAULT_MODEL;
+    next.customModelId = undefined;
+  }
+  await writeConfig(next);
+}
+
+// ── Selection ───────────────────────────────────────────────────────────────
 
 /** The chosen provider + model, falling back to the built-in defaults. */
-export async function getModelSelection(): Promise<{ provider: ProviderId; model: string }> {
+export async function getModelSelection(): Promise<{
+  provider: ProviderId;
+  model: string;
+  customModelId?: string;
+}> {
   const config = await readConfig();
   return {
     provider: config.provider ?? DEFAULT_PROVIDER,
     model: config.model ?? DEFAULT_MODEL,
+    customModelId: config.customModelId,
   };
 }
 
-/** Persist custom provider settings and activate it as the default model. */
+/** Persist a built-in provider + model chosen via the picker (clears custom selection). */
+export async function setModelSelection(provider: ProviderId, model: string): Promise<void> {
+  const config = await readConfig();
+  await writeConfig({ ...config, provider, model, customModelId: undefined });
+}
+
+/** Select a custom model by its stable id; no-op if the id is unknown. */
+export async function selectCustomModel(id: string): Promise<void> {
+  const config = await readConfig();
+  const entry = (config.customModels ?? []).find((m) => m.id === id);
+  if (!entry) return;
+  await writeConfig({ ...config, provider: "custom", model: entry.model, customModelId: id });
+}
+
+/** The currently-selected custom model entry, or `null` if custom isn't active. */
+export async function getSelectedCustomModel(): Promise<CustomModel | null> {
+  const config = await readConfig();
+  if (config.provider !== "custom") return null;
+  const models = config.customModels ?? [];
+  if (config.customModelId) return models.find((m) => m.id === config.customModelId) ?? null;
+  return models.find((m) => m.model === config.model) ?? null;
+}
+
+// ── Compatibility helpers for the current resolver / UI ─────────────────────
+// These bridge the multi-model store to the single-endpoint call sites in
+// `providers.ts`, `credentials.ts`, and the `/custom` setup screen. They will be
+// superseded once the picker and management UI are updated to address models by id.
+
+/** The endpoint of the currently-selected custom model, or `null` if not custom. */
+export async function getCustomConfig(): Promise<CustomConfig | null> {
+  const entry = await getSelectedCustomModel();
+  if (!entry) return null;
+  return {
+    baseURL: entry.baseURL,
+    label: entry.providerLabel,
+    modelLabel: entry.label,
+  };
+}
+
+/** Whether at least one custom model has been configured. */
+export async function isCustomReady(): Promise<boolean> {
+  return (await listCustomModels()).length > 0;
+}
+
+/**
+ * Add-or-update a custom model (deduped by baseURL + model) and select it as the
+ * active model. Used by the `/custom` setup screen; appends rather than overwriting,
+ * so setting up a second endpoint no longer clobbers the first.
+ */
 export async function setCustomProvider(options: {
   baseURL: string;
   model: string;
   label?: string;
   modelLabel?: string;
 }): Promise<void> {
-  const baseURL = options.baseURL.trim().replace(/\/+$/, "");
-  const next: Config = {
-    ...(await readConfig()),
-    provider: "custom",
-    model: options.model.trim(),
-    custom: {
-      baseURL,
-      label: options.label,
-      modelLabel: options.modelLabel,
-    },
-  };
-  await mkdir(BABALCODE_DIR, { recursive: true });
-  await writeFile(configFile(), `${JSON.stringify(next, null, 2)}\n`, "utf8");
-}
+  const baseURL = normalizeBaseURL(options.baseURL);
+  const model = options.model.trim();
+  const config = await readConfig();
+  const models = config.customModels ?? [];
+  const existing = models.find((m) => m.baseURL === baseURL && m.model === model);
 
-export async function setModelSelection(provider: ProviderId, model: string): Promise<void> {
-  const next: Config = { ...(await readConfig()), provider, model };
-  await mkdir(BABALCODE_DIR, { recursive: true });
-  await writeFile(configFile(), `${JSON.stringify(next, null, 2)}\n`, "utf8");
+  let nextModels: CustomModel[];
+  let selectedId: string;
+  if (existing) {
+    selectedId = existing.id;
+    nextModels = models.map((m) =>
+      m === existing
+        ? { ...m, label: options.modelLabel ?? m.label, providerLabel: options.label ?? m.providerLabel }
+        : m,
+    );
+  } else {
+    selectedId = randomUUID();
+    nextModels = [
+      ...models,
+      { id: selectedId, baseURL, model, label: options.modelLabel, providerLabel: options.label },
+    ];
+  }
+
+  await writeConfig({ ...config, provider: "custom", model, customModelId: selectedId, customModels: nextModels });
 }

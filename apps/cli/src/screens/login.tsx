@@ -1,4 +1,4 @@
-import { getModelSelection, PROVIDERS, setApiKey } from "@babalcode/engine";
+import { getModelSelection, PROVIDERS, setApiKey, setCustomModelKey } from "@babalcode/engine";
 import type { ProviderId } from "@babalcode/engine";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router";
@@ -16,12 +16,15 @@ import { colors } from "../theme";
 export function Login() {
   const navigate = useNavigate();
   const [providerId, setProviderId] = useState<ProviderId>("google");
+  const [customModelId, setCustomModelId] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
     void getModelSelection()
       .then((selection) => {
-        if (!cancelled) setProviderId(selection.provider);
+        if (cancelled) return;
+        setProviderId(selection.provider);
+        setCustomModelId(selection.customModelId ?? null);
       })
       .catch(() => {});
     return () => {
@@ -33,7 +36,14 @@ export function Login() {
   const apiKeyOptional = provider.requiresApiKey === false;
 
   const handleSubmit = (key: string) => {
-    if (key.trim()) setApiKey(providerId, key);
+    if (key.trim()) {
+      // Custom keys are namespaced per selected model, not shared under "custom".
+      if (providerId === "custom") {
+        if (customModelId) setCustomModelKey(customModelId, key);
+      } else {
+        setApiKey(providerId, key);
+      }
+    }
     navigate(ROUTES.home);
   };
 

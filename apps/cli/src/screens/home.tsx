@@ -29,7 +29,8 @@ export function Home() {
   const { open } = useDialog();
   const [modeId, setModeId] = useState<ModeId>(DEFAULT_MODE_ID);
 
-  const openModel = () => open({ title: "Select model", body: <ModelDialogBody /> });
+  const openModel = (view?: "add") =>
+    open({ title: "Select model", body: <ModelDialogBody initialView={view} /> });
   const openSessions = () =>
     open({ title: "Sessions", width: SESSION_DIALOG_WIDTH, body: <SessionListBody /> });
 
