@@ -16,15 +16,6 @@ import { MaskedInput } from "../masked-input";
 /** What the view is doing: browsing the list, editing a key, or confirming a delete. */
 type Mode = "list" | "key" | "confirmDelete";
 
-/** Host portion of a base URL for compact display; falls back to the raw string. */
-function hostOf(baseURL: string): string {
-  try {
-    return new URL(baseURL).host;
-  } catch {
-    return baseURL;
-  }
-}
-
 type ManageModelsBodyProps = {
   /** Return to the model list (Esc target). */
   onBack: () => void;
@@ -162,7 +153,7 @@ export function ManageModelsBody({ onBack, onEdit, onActivated }: ManageModelsBo
           return (
             <box
               key={m.id}
-              flexDirection="column"
+              flexDirection="row"
               paddingLeft={1}
               paddingRight={1}
               backgroundColor={selected ? colors.accent : undefined}
@@ -171,7 +162,7 @@ export function ManageModelsBody({ onBack, onEdit, onActivated }: ManageModelsBo
                 {`${active ? "● " : "  "}${m.label ?? m.model}`}
               </text>
               <text wrapMode="none" fg={sub}>
-                {`${m.model} · ${hostOf(m.baseURL)} · ${keyed.has(m.id) ? "key set" : "no key"}`}
+                {`  ${m.model} · ${keyed.has(m.id) ? "key set" : "no key"}`}
               </text>
             </box>
           );
@@ -202,7 +193,7 @@ export function ManageModelsBody({ onBack, onEdit, onActivated }: ManageModelsBo
           Delete “{current.label ?? current.model}”? y to confirm · n to cancel
         </text>
       ) : (
-        <text fg={colors.muted}>↑/↓ move · enter activate · e edit · k key · d delete · esc back</text>
+        <text fg={colors.muted}>↑/↓ move · enter activate · e edit · k key · d delete</text>
       )}
     </box>
   );

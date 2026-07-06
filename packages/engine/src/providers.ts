@@ -54,7 +54,8 @@ export const PROVIDERS = {
       { id: "gemini-2.5-flash", label: "Gemini 2.5 Flash" },
       { id: "gemini-2.5-pro", label: "Gemini 2.5 Pro" },
     ],
-    createModel: (apiKey, modelId) => createGoogleGenerativeAI({ apiKey })(modelId),
+    createModel: (apiKey, modelId) =>
+      createGoogleGenerativeAI({ apiKey })(modelId),
   },
   custom: {
     id: "custom",
@@ -99,7 +100,9 @@ export async function resolveLanguageModel(
   }
 
   if (!apiKey) {
-    throw new Error(`No API key for ${PROVIDERS[providerId].label}. Run /login to add one.`);
+    throw new Error(
+      `No API key for ${PROVIDERS[providerId].label}. Run /login to add one.`,
+    );
   }
   return PROVIDERS[providerId].createModel(apiKey, modelId);
 }
@@ -128,7 +131,7 @@ export async function listModelOptions(): Promise<ModelOption[]> {
       provider: "custom",
       id: entry.id,
       label: entry.label ?? entry.model,
-      description: `${entry.model} · ${hostOf(entry.baseURL)}`,
+      description: entry.model,
       section: "Custom",
     });
   }
@@ -146,7 +149,7 @@ export async function listModelOptions(): Promise<ModelOption[]> {
   options.push({
     provider: "custom",
     id: CUSTOM_SETUP_MODEL_ID,
-    label: "Set up custom endpoint",
+    label: "Add new model",
     description: "Add a new OpenAI-compatible model",
     section: "Custom",
   });
@@ -154,32 +157,18 @@ export async function listModelOptions(): Promise<ModelOption[]> {
   return options;
 }
 
-/** Host portion of a base URL for compact display; falls back to the raw string. */
-function hostOf(baseURL: string): string {
-  try {
-    return new URL(baseURL).host;
-  } catch {
-    return baseURL;
-  }
-}
-
-/** Display label for the active model in the chat footer. */
+/**
+ * Model + provider text for the chat footer. Always shows the raw model id (not a
+ * friendly label) so the footer reflects exactly what's sent to the API.
+ */
 export async function getModelDisplayLabel(
   providerId: ProviderId,
   modelId: string,
 ): Promise<{ modelLabel: string; providerLabel: string }> {
-  const catalogMatch = PROVIDERS[providerId].models.find((m) => m.id === modelId);
-  if (catalogMatch) {
-    return {
-      modelLabel: catalogMatch.label,
-      providerLabel: PROVIDERS[providerId].label,
-    };
-  }
-
   if (providerId === "custom") {
     const custom = await getCustomConfig();
     return {
-      modelLabel: custom?.modelLabel ?? modelId,
+      modelLabel: modelId,
       providerLabel: custom?.label ?? PROVIDERS.custom.label,
     };
   }

@@ -98,7 +98,12 @@ export function ModelDialogBody({ initialView = "list" }: ModelDialogBodyProps) 
   if (view === "edit" && editTarget) {
     return (
       <CustomModelForm
-        edit={{ id: editTarget.id, baseURL: editTarget.baseURL, model: editTarget.model }}
+        edit={{
+          id: editTarget.id,
+          label: editTarget.label,
+          baseURL: editTarget.baseURL,
+          model: editTarget.model,
+        }}
         onBack={() => setView("manage")}
         onDone={() => setView("manage")}
       />

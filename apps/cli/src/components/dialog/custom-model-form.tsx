@@ -9,10 +9,10 @@ import { useIsActiveLayer, useLayerKeyboard } from "../../services/layer";
 import { colors } from "../../theme";
 
 /** The form's fields, in tab order. API key only appears when adding. */
-type FieldName = "baseURL" | "model" | "apiKey";
+type FieldName = "label" | "baseURL" | "model" | "apiKey";
 
-/** An existing model to edit in place; only its info (base URL + model id) is touched. */
-type EditTarget = { id: string; baseURL: string; model: string };
+/** An existing model to edit in place; only its info (label + base URL + model id) is touched. */
+type EditTarget = { id: string; label?: string; baseURL: string; model: string };
 
 type CustomModelFormProps = {
   /** Return to the previous view (also the Esc target). */
@@ -89,11 +89,12 @@ export function CustomModelForm({ onBack, onDone, edit }: CustomModelFormProps) 
   const isActive = useIsActiveLayer();
   // API key only applies when adding; editing is info-only.
   const fields: readonly FieldName[] = edit
-    ? ["baseURL", "model"]
-    : ["baseURL", "model", "apiKey"];
+    ? ["label", "baseURL", "model"]
+    : ["label", "baseURL", "model", "apiKey"];
   const lastField = fields.at(-1)!;
 
-  const [focus, setFocus] = useState<FieldName>("baseURL");
+  const [focus, setFocus] = useState<FieldName>("label");
+  const [label, setLabel] = useState(edit?.label ?? "");
   const [baseURL, setBaseURL] = useState(edit?.baseURL ?? "");
   const [model, setModel] = useState(edit?.model ?? "");
   const [apiKey, setApiKey] = useState("");
@@ -110,12 +111,16 @@ export function CustomModelForm({ onBack, onDone, edit }: CustomModelFormProps) 
     if (!model.trim()) return setFocus("model");
 
     if (edit) {
-      void updateCustomModel(edit.id, { baseURL: baseURL.trim(), model: model.trim() })
+      void updateCustomModel(edit.id, {
+        label: label.trim() || undefined,
+        baseURL: baseURL.trim(),
+        model: model.trim(),
+      })
         .then(onDone)
         .catch(onDone);
       return;
     }
-    void addCustomModel({ baseURL: baseURL.trim(), model: model.trim() })
+    void addCustomModel({ label: label.trim() || undefined, baseURL: baseURL.trim(), model: model.trim() })
       .then((entry) => {
         if (apiKey.trim()) setCustomModelKey(entry.id, apiKey.trim());
         return selectCustomModel(entry.id);
@@ -157,6 +162,16 @@ export function CustomModelForm({ onBack, onDone, edit }: CustomModelFormProps) 
       <text fg={colors.text}>
         <b>{edit ? "Edit custom model" : "Add custom model"}</b>
       </text>
+
+      <Field
+        label="Label"
+        hint="optional · shown in the picker"
+        focused={isActive && focus === "label"}
+        initialValue={edit?.label}
+        placeholder="My local Llama"
+        onInput={setLabel}
+        onSubmit={onFieldSubmit}
+      />
 
       <Field
         label="Base URL"
