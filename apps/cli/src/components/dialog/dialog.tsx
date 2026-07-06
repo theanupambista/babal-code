@@ -7,11 +7,13 @@ type DialogProps = {
   title: string;
   /** Called when the user dismisses the dialog (Esc or clicking `esc`). */
   onClose: () => void;
+  /** Panel width in columns. Defaults to `DIALOG_WIDTH`. */
+  width?: number;
   /** Body slot. Falls back to a `todo` placeholder when omitted. */
   children?: ReactNode;
 };
 
-/** Width of the dialog panel, in columns. */
+/** Default width of the dialog panel, in columns. */
 const DIALOG_WIDTH = 60;
 
 /**
@@ -22,7 +24,7 @@ const DIALOG_WIDTH = 60;
  * Presentational only — open/close state lives in `DialogProvider`, and the
  * scrim/centering is the `DialogOverlay`'s job.
  */
-export function Dialog({ title, onClose, children }: DialogProps) {
+export function Dialog({ title, onClose, width = DIALOG_WIDTH, children }: DialogProps) {
   // Esc dismisses, and — because the dialog is the active layer — so does Ctrl+C:
   // consuming it here overrides the app-level quit so it just closes the dialog.
   // Both are consumed so they don't reach the screen (or the exit) beneath.
@@ -35,7 +37,7 @@ export function Dialog({ title, onClose, children }: DialogProps) {
 
   return (
     <box
-      width={DIALOG_WIDTH}
+      width={width}
       flexDirection="column"
       backgroundColor={colors.panel}
       paddingLeft={2}

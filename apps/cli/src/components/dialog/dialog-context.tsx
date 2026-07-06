@@ -7,6 +7,8 @@ import { Dialog } from "./dialog";
 export type DialogContent = {
   /** Heading shown top-left of the dialog. */
   title: string;
+  /** Panel width in columns. Falls back to the dialog's default when omitted. */
+  width?: number;
   /** Arbitrary body slot. Falls back to a `todo` placeholder when omitted. */
   body?: ReactNode;
 };
@@ -49,7 +51,7 @@ export function DialogProvider({ children }: { children: ReactNode }) {
         // dialog's own Esc/Ctrl+C handlers take precedence.
         <Layer>
           <DialogOverlay>
-            <Dialog title={dialog.title} onClose={close}>
+            <Dialog title={dialog.title} width={dialog.width} onClose={close}>
               {dialog.body}
             </Dialog>
           </DialogOverlay>

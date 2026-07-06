@@ -6,7 +6,12 @@ import { useState } from "react";
 import { useNavigate } from "react-router";
 import { runSlashCommand } from "../commands";
 import { CHAT_MAX_WIDTH, ChatTextarea } from "../components/chat";
-import { ModelDialogBody, SessionListBody, useDialog } from "../components/dialog";
+import {
+  ModelDialogBody,
+  SESSION_DIALOG_WIDTH,
+  SessionListBody,
+  useDialog,
+} from "../components/dialog";
 import { Logo } from "../components/logo";
 import { ROUTES } from "../routes";
 
@@ -25,7 +30,8 @@ export function Home() {
   const [modeId, setModeId] = useState<ModeId>(DEFAULT_MODE_ID);
 
   const openModel = () => open({ title: "Select model", body: <ModelDialogBody /> });
-  const openSessions = () => open({ title: "Sessions", body: <SessionListBody /> });
+  const openSessions = () =>
+    open({ title: "Sessions", width: SESSION_DIALOG_WIDTH, body: <SessionListBody /> });
 
   const handleSubmit = (value: string, modeId: ModeId) => {
     // A bare slash command runs as a command (navigate to its route, or `/clear`/

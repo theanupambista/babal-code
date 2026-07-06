@@ -16,7 +16,12 @@ import {
   renderMessageParts,
   ToolSelectionContext,
 } from "../components/chat";
-import { ModelDialogBody, SessionListBody, useDialog } from "../components/dialog";
+import {
+  ModelDialogBody,
+  SESSION_DIALOG_WIDTH,
+  SessionListBody,
+  useDialog,
+} from "../components/dialog";
 import { runSlashCommand } from "../commands";
 import { useLayerKeyboard } from "../services/layer";
 import { loadMessages } from "../lib/session";
@@ -130,7 +135,8 @@ function ChatView({
   const { open } = useDialog();
 
   const openModel = () => open({ title: "Select model", body: <ModelDialogBody /> });
-  const openSessions = () => open({ title: "Sessions", body: <SessionListBody /> });
+  const openSessions = () =>
+    open({ title: "Sessions", width: SESSION_DIALOG_WIDTH, body: <SessionListBody /> });
 
   const [modeId, setModeId] = useState<ModeId>(initialModeId ?? DEFAULT_MODE_ID);
 

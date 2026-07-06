@@ -6,6 +6,12 @@ import { colors } from "../../theme";
 import { useDialog } from "./dialog-context";
 import { DialogSearchList } from "./dialog-search-list";
 
+/**
+ * Width of the Sessions dialog, in columns — wider than the default so session
+ * titles have room to sit on a single line.
+ */
+export const SESSION_DIALOG_WIDTH = 80;
+
 /** Compact "3m ago" / "2h ago" / "5d ago" label from an ISO timestamp. */
 function relativeTime(iso: string): string {
   const diffMs = Date.now() - new Date(iso).getTime();
@@ -58,7 +64,7 @@ export function SessionListBody() {
   }
 
   const items = sessions.map((session) => ({
-    name: truncate(session.title ?? session.preview ?? "(untitled)", 60),
+    name: truncate(session.title ?? session.preview ?? "(untitled)", 70),
     description: `${relativeTime(session.updatedAt)}${session.model ? ` · ${session.model}` : ""}`,
     value: session.id,
   }));

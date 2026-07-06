@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState } from "react";
+import type { ScrollBoxRenderable } from "@opentui/core";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useIsActiveLayer, useLayerKeyboard } from "../../services/layer";
 import { colors } from "../../theme";
 
@@ -25,7 +26,7 @@ type DialogSearchListProps = {
   listHeight?: number;
 };
 
-/** Visible rows in the list before it scrolls internally. */
+/** Visible lines in the list before it scrolls internally. */
 const DEFAULT_LIST_HEIGHT = 12;
 
 /** Case-insensitive substring match against a row's name and description. */
@@ -35,19 +36,27 @@ function matches(item: SearchListItem, query: string): boolean {
   return haystack.includes(query.toLowerCase());
 }
 
+/** Stable id for a row so the scrollbox can scroll it into view by index. */
+function rowId(index: number): string {
+  return `dialog-search-row-${index}`;
+}
+
 /**
  * A search box over a scrollable list — the default body layout for pick-one
  * dialogs. Typing filters `items` by a case-insensitive substring match on the
- * name and description; ↑/↓ move the highlight and Enter confirms.
+ * name and description; ↑/↓ move the highlight and Enter confirms. The mouse
+ * works too: hovering a row highlights it and clicking selects it (mirroring the
+ * slash-command menu).
  *
  * The search box is a *real* focused `<input>`, so it renders a live cursor and
  * reads as focused — the input owns typing, backspace and paste natively. The
- * `<select>` beneath stays unfocused and is driven by a controlled
- * `selectedIndex`: a focused select would swallow `j`/`k` (and the arrows) as
- * navigation and starve the query, so we keep it inert and move the highlight
- * ourselves. ↑/↓ are handled on the dialog's layer (and consumed, so they never
- * reach the input's cursor); Enter arrives at the input as a submit; Esc is left
- * for the surrounding `Dialog`.
+ * list is a `<scrollbox>` of plain rows (not a focused `<select>`, which would
+ * swallow `j`/`k` and the arrows as navigation and starve the query). We own the
+ * highlight via a controlled `selectedIndex`, keep the highlighted row visible
+ * with `scrollChildIntoView`, and drive it from both the keyboard and the mouse.
+ * ↑/↓ are handled on the dialog's layer (and consumed, so they never reach the
+ * input's cursor); Enter arrives at the input as a submit; Esc is left for the
+ * surrounding `Dialog`.
  */
 export function DialogSearchList({
   items,
@@ -61,6 +70,7 @@ export function DialogSearchList({
   const isActive = useIsActiveLayer();
   const [query, setQuery] = useState("");
   const [selectedIndex, setSelectedIndex] = useState(0);
+  const scrollRef = useRef<ScrollBoxRenderable | null>(null);
 
   const filtered = useMemo(() => items.filter((item) => matches(item, query)), [items, query]);
 
@@ -70,14 +80,19 @@ export function DialogSearchList({
     if (clampedIndex !== selectedIndex) setSelectedIndex(clampedIndex);
   }, [clampedIndex, selectedIndex]);
 
+  // Keep the highlighted row visible as the selection moves (keyboard or mouse).
+  useEffect(() => {
+    if (filtered.length > 0) scrollRef.current?.scrollChildIntoView(rowId(clampedIndex));
+  }, [clampedIndex, filtered.length]);
+
   const confirm = () => {
     const item = filtered[clampedIndex];
     if (item) onSelect(item);
   };
 
-  // ↑/↓ scroll the unfocused list. Consuming them (return true) keeps them off
-  // the focused input, whose single line has no use for them anyway. Everything
-  // else — printable keys, backspace, paste, Enter — falls through to the input.
+  // ↑/↓ scroll the list. Consuming them (return true) keeps them off the focused
+  // input, whose single line has no use for them anyway. Everything else —
+  // printable keys, backspace, paste, Enter — falls through to the input.
   useLayerKeyboard((key) => {
     if (key.name === "up") {
       setSelectedIndex((i) => Math.max(0, i - 1));
@@ -118,21 +133,36 @@ export function DialogSearchList({
       {filtered.length === 0 ? (
         <text fg={colors.muted}>{emptyText}</text>
       ) : (
-        <select
-          height={listHeight}
-          options={filtered.map((item) => ({
-            name: item.name,
-            description: item.description ?? "",
-            value: item.value,
-          }))}
-          selectedIndex={clampedIndex}
-          showScrollIndicator
-          selectedBackgroundColor={colors.accent}
-          selectedTextColor="#000000"
-        />
+        <scrollbox ref={scrollRef} height={listHeight}>
+          {filtered.map((item, i) => {
+            const selected = i === clampedIndex;
+            return (
+              <box
+                key={item.value}
+                id={rowId(i)}
+                flexShrink={0}
+                flexDirection="column"
+                width="100%"
+                paddingLeft={1}
+                paddingRight={1}
+                backgroundColor={selected ? colors.accent : undefined}
+                onMouseMove={() => setSelectedIndex(i)}
+                onMouseDown={() => onSelect(item)}
+              >
+                <text wrapMode="none" fg={selected ? colors.background : colors.text}>
+                  {item.name}
+                </text>
+                {item.description ? (
+                  <text wrapMode="none" fg={selected ? colors.background : colors.muted}>
+                    {item.description}
+                  </text>
+                ) : null}
+              </box>
+            );
+          })}
+        </scrollbox>
       )}
 
-      <text fg={colors.muted}>type to search · ↑/↓ to navigate · enter to select · esc to close</text>
     </box>
   );
 }
