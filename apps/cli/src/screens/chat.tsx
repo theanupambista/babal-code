@@ -129,7 +129,7 @@ function ChatView({
 
   const transport = useMemo(() => new InProcessTransport(), []);
 
-  const { messages, sendMessage, status, error, regenerate, clearError } = useChat({
+  const { messages, sendMessage, status, error, regenerate, clearError, stop } = useChat({
     id,
     messages: initialMessages,
     transport,
@@ -206,6 +206,13 @@ function ChatView({
     if (selectedId) scrollRef.current?.scrollChildIntoView(selectedId);
   }, [selectedId]);
 
+  // Escape stops an in-flight turn (model stream, tool loop, or permission wait).
+  useLayerKeyboard((key) => {
+    if (!isChatBusy(status) || key.name !== "escape") return;
+    void stop();
+    return true;
+  });
+
   // Fire the first message exactly once for a freshly created session, in the active mode.
   const sent = useRef(false);
   useEffect(() => {
@@ -236,6 +243,8 @@ function ChatView({
           onModeChange={setModeId}
           onSubmit={handleSubmit}
           focused={!activePermission}
+          busy={isChatBusy(status)}
+          busyLabel={busyLabel}
         />
       }
       banner={
@@ -269,11 +278,6 @@ function ChatView({
           }),
         )}
       </ToolSelectionContext.Provider>
-      {busyLabel && (
-        <text fg={colors.muted} paddingLeft={4}>
-          {busyLabel}
-        </text>
-      )}
     </ChatLayout>
   );
 }

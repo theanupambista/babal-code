@@ -28,10 +28,12 @@ export async function runAgent({
   sessionId,
   messages,
   mode,
+  abortSignal,
 }: {
   sessionId: string;
   messages: UIMessage[];
   mode: string;
+  abortSignal?: AbortSignal;
 }): Promise<ReadableStream<UIMessageChunk>> {
   // Record the just-sent user message up front so it is kept even if the turn fails.
   const lastMessage = messages[messages.length - 1];
@@ -82,11 +84,15 @@ export async function runAgent({
     ? `${basePrompt}\n\n${activeMode.instructions}`
     : basePrompt;
 
+  // Unblock any tool suspended on a permission prompt when the user stops.
+  abortSignal?.addEventListener("abort", () => permission.cancelAll(), { once: true });
+
   const result = streamText({
     model: languageModel,
     system,
     messages: await convertToModelMessages(messages),
     tools: activeTools,
+    abortSignal,
     // A coding turn chains many tool calls (list → read → edit → verify); without a
     // stop condition the run ends after the first tool call. Cap the loop generously.
     stopWhen: stepCountIs(25),

@@ -75,6 +75,8 @@ export interface PermissionService {
   /** Set the mode for the current turn; its `autoAllow` shapes the default action. */
   setActiveMode(mode: string): void;
   reply(id: string, decision: PermissionDecision): void;
+  /** Reject every in-flight prompt — used when the user stops a turn mid-flight. */
+  cancelAll(reason?: string): void;
   pending(): readonly PendingPermission[];
   subscribe(listener: () => void): () => void;
 }
@@ -111,6 +113,15 @@ export const permission: PermissionService = {
     registry.set(id, { request: { ...req, id }, deferred });
     rebuildSnapshot();
     return deferred.promise;
+  },
+
+  cancelAll(reason = "Stopped by user") {
+    if (registry.size === 0) return;
+    for (const entry of registry.values()) {
+      entry.deferred.reject(new PermissionRejectedError(reason, reason));
+    }
+    registry.clear();
+    rebuildSnapshot();
   },
 
   reply(id, decision) {

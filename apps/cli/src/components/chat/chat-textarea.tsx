@@ -16,6 +16,7 @@ import { colors, modeColor as modeColorFor } from "../../theme";
 import { EmptyBorder } from "../border";
 import { BAR_CONTENT_PADDING } from "./chat-message";
 import { FileMentionMenu } from "./file-mention-menu";
+import { GenerationIndicator } from "./generation-indicator";
 import { SlashCommandMenu } from "./slash-command-menu";
 
 type ChatTextareaProps = {
@@ -37,6 +38,10 @@ type ChatTextareaProps = {
   modeId: ModeId;
   /** Called when Tab/Shift+Tab cycles the mode. */
   onModeChange: (modeId: ModeId) => void;
+  /** True while a turn is in flight — shows an animated generation indicator in the footer. */
+  busy?: boolean;
+  /** Contextual status for the active turn, e.g. "…responding". */
+  busyLabel?: string | null;
 };
 
 // Enter submits; Shift+Enter (where the terminal reports it) inserts a newline.
@@ -77,6 +82,8 @@ export function ChatTextarea({
   focused = true,
   modeId,
   onModeChange,
+  busy = false,
+  busyLabel = null,
 }: ChatTextareaProps) {
   const textareaRef = useRef<TextareaRenderable>(null);
   const [generation, setGeneration] = useState(0);
@@ -399,7 +406,13 @@ export function ChatTextarea({
                 </>
               ) : null}
             </text>
-            <text fg={notice ? colors.accent : colors.muted}>{notice ?? "ctrl+c to exit"}</text>
+            {notice ? (
+              <text fg={colors.accent}>{notice}</text>
+            ) : busy && busyLabel ? (
+              <GenerationIndicator label={busyLabel} />
+            ) : (
+              <text fg={colors.muted}>ctrl+c to exit</text>
+            )}
           </box>
         </box>
       </box>

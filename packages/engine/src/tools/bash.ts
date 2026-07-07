@@ -188,7 +188,7 @@ export const bashTool = tool({
         `Timeout in milliseconds (default ${DEFAULT_TIMEOUT_MS}, max ${MAX_TIMEOUT_MS}).`,
       ),
   }),
-  execute: async ({ command, timeout }) => {
+  execute: async ({ command, timeout }, { abortSignal }) => {
     const bash = bashPath();
     if (!bash) {
       return {
@@ -215,40 +215,54 @@ export const bashTool = tool({
         stderr: "pipe",
       });
 
+      const onAbort = () => killProcessTree(proc);
+      abortSignal?.addEventListener("abort", onAbort, { once: true });
+
       const timeoutMs = Math.min(timeout ?? DEFAULT_TIMEOUT_MS, MAX_TIMEOUT_MS);
       let timedOut = false;
       const timer = setTimeout(() => {
         timedOut = true;
         killProcessTree(proc);
       }, timeoutMs);
-      const [rawStdout, stderr] = await Promise.all([
-        new Response(proc.stdout).text(),
-        new Response(proc.stderr).text(),
-      ]);
-      const exitCode = await proc.exited;
-      clearTimeout(timer);
+      try {
+        const [rawStdout, stderr] = await Promise.all([
+          new Response(proc.stdout).text(),
+          new Response(proc.stderr).text(),
+        ]);
+        const exitCode = await proc.exited;
+        clearTimeout(timer);
 
-      // Extract cwd from raw output before clamping (marker is at the very end).
-      const { cwd, cleaned } = extractCwd(rawStdout);
-      if (cwd) currentCwd = cwd;
+        // Extract cwd from raw output before clamping (marker is at the very end).
+        const { cwd, cleaned } = extractCwd(rawStdout);
+        if (cwd) currentCwd = cwd;
 
-      // On timeout the process was killed, so exitCode/stderr alone can't be
-      // distinguished from an ordinary failure — flag it explicitly and note it
-      // in stderr (where the model reads command failures) so it doesn't retry blindly.
-      const timeoutNote = `[command exceeded its ${timeoutMs}ms timeout and was terminated, along with any processes it spawned; output may be partial]`;
-      const finalStderr = timedOut
-        ? stderr
-          ? `${stderr}\n${timeoutNote}`
-          : timeoutNote
-        : stderr;
+        // On timeout the process was killed, so exitCode/stderr alone can't be
+        // distinguished from an ordinary failure — flag it explicitly and note it
+        // in stderr (where the model reads command failures) so it doesn't retry blindly.
+        const timeoutNote = `[command exceeded its ${timeoutMs}ms timeout and was terminated, along with any processes it spawned; output may be partial]`;
+        const abortedNote = "[command was stopped by the user; output may be partial]";
+        const finalStderr = timedOut
+          ? stderr
+            ? `${stderr}\n${timeoutNote}`
+            : timeoutNote
+          : abortSignal?.aborted
+            ? stderr
+              ? `${stderr}\n${abortedNote}`
+              : abortedNote
+            : stderr;
 
-      return {
-        exitCode,
-        timedOut,
-        stdout: clamp(cleaned),
-        stderr: clamp(finalStderr),
-        cwd: toWorkspaceRelative(currentCwd),
-      };
+        return {
+          exitCode,
+          timedOut,
+          aborted: abortSignal?.aborted ?? false,
+          stdout: clamp(cleaned),
+          stderr: clamp(finalStderr),
+          cwd: toWorkspaceRelative(currentCwd),
+        };
+      } finally {
+        abortSignal?.removeEventListener("abort", onAbort);
+        clearTimeout(timer);
+      }
     } catch (error) {
       return { error: error instanceof Error ? error.message : String(error) };
     }

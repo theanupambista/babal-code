@@ -13,6 +13,7 @@ export class InProcessTransport implements ChatTransport<UIMessage> {
     chatId,
     messages,
     body,
+    abortSignal,
   }: Parameters<ChatTransport<UIMessage>["sendMessages"]>[0]): Promise<
     ReadableStream<UIMessageChunk>
   > {
@@ -22,7 +23,7 @@ export class InProcessTransport implements ChatTransport<UIMessage> {
     // rather than letting it slip through to the engine.
     const rawModeId = (body as { modeId?: unknown } | undefined)?.modeId;
     const modeId: ModeId = isModeId(rawModeId) ? rawModeId : DEFAULT_MODE_ID;
-    return runAgent({ sessionId: chatId, messages, mode: modeId });
+    return runAgent({ sessionId: chatId, messages, mode: modeId, abortSignal });
   }
 
   // No persistent server-side stream exists to resume in-process.
