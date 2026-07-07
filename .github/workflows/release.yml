@@ -50,7 +50,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: platform-${{ matrix.platform }}
-          path: release-out/
+          path: release-out/@babalcode/
           retention-days: 7
 
   publish:
@@ -68,9 +68,37 @@ jobs:
       - name: Download platform packages
         uses: actions/download-artifact@v4
         with:
-          path: .
+          path: artifact-staging
           pattern: platform-*
           merge-multiple: true
+
+      - name: Collect platform packages
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p release-out/@babalcode
+
+          # Each artifact uploads one platform folder; layout varies after merge.
+          while IFS= read -r -d '' pkg_json; do
+            pkg_dir=$(dirname "$pkg_json")
+            name=$(basename "$pkg_dir")
+            case "$name" in
+              cli-darwin-arm64|cli-darwin-x64|cli-linux-arm64|cli-linux-x64|cli-win32-x64)
+                echo "Collecting $name from $pkg_dir"
+                rm -rf "release-out/@babalcode/$name"
+                cp -a "$pkg_dir" "release-out/@babalcode/$name"
+                ;;
+            esac
+          done < <(find artifact-staging -type f -path '*/cli-*/package.json' -print0 2>/dev/null || find artifact-staging -type f -name package.json -print0)
+
+          count=$(find release-out/@babalcode -maxdepth 1 -type d -name 'cli-*' | wc -l)
+          echo "Platform packages ready: $count"
+          ls -la release-out/@babalcode/
+          if [ "$count" -lt 5 ]; then
+            echo "ERROR: expected 5 platform packages before publish, found $count"
+            find artifact-staging -type f -name package.json || true
+            exit 1
+          fi
 
       - name: Resolve version from tag
         shell: bash
@@ -83,8 +111,10 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          count=0
           for pkg in release-out/@babalcode/cli release-out/@babalcode/cli-*; do
             [ -d "$pkg" ] || continue
+            count=$((count + 1))
             echo "==> npm pack --dry-run $pkg"
             (cd "$pkg" && npm pack --dry-run 2>&1) | tee /tmp/pack.log
             if grep -E '\.(ts|tsx|map)$' /tmp/pack.log; then
@@ -92,6 +122,10 @@ jobs:
               exit 1
             fi
           done
+          if [ "$count" -lt 6 ]; then
+            echo "ERROR: expected 6 packages to verify (1 wrapper + 5 platform), found $count"
+            exit 1
+          fi
 
       - uses: actions/setup-node@v4
         with:
@@ -102,17 +136,35 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          published=0
           for pkg in release-out/@babalcode/cli-*; do
             [ -d "$pkg" ] || continue
-            echo "Publishing $(basename "$pkg")"
+            name=$(basename "$pkg")
+            echo "Publishing $name"
             (cd "$pkg" && npm publish --access public)
+            published=$((published + 1))
           done
+          if [ "$published" -lt 5 ]; then
+            echo "ERROR: expected to publish 5 platform packages, published $published"
+            exit 1
+          fi
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
       - name: Publish wrapper package
         shell: bash
-        run: cd release-out/@babalcode/cli && npm publish --access public
+        run: |
+          set -euo pipefail
+          cd release-out/@babalcode/cli
+          if npm publish --access public; then
+            exit 0
+          fi
+          code=$?
+          if npm view "@babalcode/cli@${RELEASE_VERSION}" version >/dev/null 2>&1; then
+            echo "Wrapper @babalcode/cli@${RELEASE_VERSION} is already published — skipping."
+            exit 0
+          fi
+          exit $code
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
