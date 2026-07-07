@@ -43,7 +43,7 @@ export function ManageModelsBody({ onBack, onEdit, onActivated }: ManageModelsBo
   const refresh = useCallback(async () => {
     const [list, selection] = await Promise.all([listCustomModels(), getModelSelection()]);
     setModels(list);
-    setActiveId(selection.provider === "custom" ? selection.customModelId ?? null : null);
+    setActiveId(selection?.provider === "custom" ? selection.customModelId ?? null : null);
     setKeyed(new Set(list.filter((m) => hasCustomModelKey(m.id)).map((m) => m.id)));
     setIndex((i) => Math.max(0, Math.min(i, list.length - 1)));
   }, []);

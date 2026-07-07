@@ -100,16 +100,6 @@ export function hasApiKey(provider: ProviderId): boolean {
   return resolveApiKey(provider) !== null;
 }
 
-/** Whether the app can start without forcing `/login` (any provider ready). */
-export async function canStartApp(): Promise<boolean> {
-  if (await isCustomReady()) return true;
-  for (const id of Object.keys(PROVIDERS) as ProviderId[]) {
-    if (id === "custom") continue;
-    if (hasApiKey(id)) return true;
-  }
-  return false;
-}
-
 /** Whether the custom provider can run (configured baseURL, key optional). */
 export async function hasCustomAuth(): Promise<boolean> {
   if (resolveApiKey("custom")) return true;

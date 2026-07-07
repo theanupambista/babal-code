@@ -38,6 +38,7 @@ export {
   deleteCustomModel,
   type CustomModel,
   type CustomConfig,
+  type ModelSelection,
 } from "./config";
 export { configFile } from "./session/paths";
 export {
@@ -55,7 +56,6 @@ export {
   resolveApiKey,
   getStoredApiKey,
   hasApiKey,
-  canStartApp,
   hasProviderAuth,
   setCustomModelKey,
   getCustomModelKey,

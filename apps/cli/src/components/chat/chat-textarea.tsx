@@ -82,6 +82,11 @@ export function ChatTextarea({
   const [generation, setGeneration] = useState(0);
   const [modelLabel, setModelLabel] = useState<string | null>(null);
   const [providerLabel, setProviderLabel] = useState<string | null>(null);
+  // Whether a model is selected at all. Starts optimistic so the send gate doesn't
+  // flash before the first read resolves; the effect below sets the real value.
+  const [hasModel, setHasModel] = useState(true);
+  // Transient footer hint, e.g. after a blocked send with no model selected.
+  const [notice, setNotice] = useState<string | null>(null);
 
   // Slash-command autocomplete. `query` is the token after `/` (null = not a
   // command); `dismissed` hides the menu after Escape until the next keystroke.
@@ -147,14 +152,23 @@ export function ChatTextarea({
     if (!isFocused) return;
     let cancelled = false;
     void getModelSelection()
-      .then(({ provider, model }) => getModelDisplayLabel(provider, model))
-      .then(({ modelLabel, providerLabel }) => {
+      .then((selection) => {
+        if (!cancelled) {
+          setHasModel(!!selection);
+          // A model is now selected — clear any stale "pick a model" notice.
+          if (selection) setNotice(null);
+        }
+        return selection ? getModelDisplayLabel(selection.provider, selection.model) : null;
+      })
+      .then((labels) => {
         if (cancelled) return;
-        setModelLabel(modelLabel);
-        setProviderLabel(providerLabel);
+        // No selection → clear the labels; the footer renders its "no model" state.
+        setModelLabel(labels?.modelLabel ?? null);
+        setProviderLabel(labels?.providerLabel ?? null);
       })
       .catch(() => {
         if (!cancelled) {
+          setHasModel(false);
           setModelLabel(null);
           setProviderLabel(null);
         }
@@ -173,6 +187,8 @@ export function ChatTextarea({
     setQuery(slashQuery(text));
     setSelectedIndex(0);
     setDismissed(false);
+    // Typing clears the "pick a model" hint from an earlier blocked send.
+    setNotice(null);
     // The caret drives which `@` (if any) is live — a mention only autocompletes
     // the token the caret is sitting at the end of.
     const caret = ta?.cursorOffset ?? text.length;
@@ -271,6 +287,14 @@ export function ChatTextarea({
     // parent trims for the message path.
     const value = textareaRef.current?.plainText ?? "";
     if (value.trim().length === 0) return;
+    // Slash commands (e.g. /model) always go through so the user can pick a model;
+    // a plain message with nothing selected is blocked with an inline hint instead
+    // of failing at send time in the agent.
+    const isCommand = value.trim().startsWith("/");
+    if (!isCommand && !hasModel) {
+      setNotice("No model selected — press /model to choose one.");
+      return;
+    }
     onSubmit?.(value, modeId);
     setGeneration((g) => g + 1);
   };
@@ -361,7 +385,13 @@ export function ChatTextarea({
           <box flexDirection="row" justifyContent="space-between">
             <text>
               <span fg={modeColor}>{getMode(modeId).label}</span>
-              {modelLabel && providerLabel ? (
+              {!hasModel ? (
+                <>
+                  <span fg={colors.muted}> · </span>
+                  <span fg={colors.accent}>No model</span>
+                  <span fg={colors.muted}> — /model to choose</span>
+                </>
+              ) : modelLabel && providerLabel ? (
                 <>
                   <span fg={colors.muted}> · </span>
                   <span fg="#ffffff">{modelLabel}&nbsp;</span>
@@ -369,7 +399,7 @@ export function ChatTextarea({
                 </>
               ) : null}
             </text>
-            <text fg={colors.muted}>ctrl+c to exit</text>
+            <text fg={notice ? colors.accent : colors.muted}>{notice ?? "ctrl+c to exit"}</text>
           </box>
         </box>
       </box>

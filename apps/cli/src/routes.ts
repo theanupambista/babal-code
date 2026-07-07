@@ -9,6 +9,4 @@ export const ROUTES = {
   home: "/",
   /** A conversation screen. The id is client-generated and used as the session id. */
   session: (id: string) => `/sessions/${id}`,
-  /** API-key entry — masked field; stores the key in the OS keychain. */
-  login: "/login",
 } as const;

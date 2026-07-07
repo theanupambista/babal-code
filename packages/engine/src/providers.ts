@@ -1,4 +1,6 @@
+import { createAnthropic } from "@ai-sdk/anthropic";
 import { createGoogleGenerativeAI } from "@ai-sdk/google";
+import { createOpenAI } from "@ai-sdk/openai";
 import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
 import type { LanguageModel } from "ai";
 import { getCustomConfig, listCustomModels } from "./config";
@@ -57,6 +59,29 @@ export const PROVIDERS = {
     createModel: (apiKey, modelId) =>
       createGoogleGenerativeAI({ apiKey })(modelId),
   },
+  anthropic: {
+    id: "anthropic",
+    label: "Anthropic Claude",
+    envVar: "ANTHROPIC_API_KEY",
+    requiresApiKey: true,
+    models: [
+      { id: "claude-opus-4-8", label: "Claude Opus 4.8" },
+      { id: "claude-sonnet-5", label: "Claude Sonnet 5" },
+      { id: "claude-haiku-4-5", label: "Claude Haiku 4.5" },
+    ],
+    createModel: (apiKey, modelId) => createAnthropic({ apiKey })(modelId),
+  },
+  openai: {
+    id: "openai",
+    label: "OpenAI",
+    envVar: "OPENAI_API_KEY",
+    requiresApiKey: true,
+    models: [
+      { id: "gpt-5.1", label: "GPT-5.1" },
+      { id: "gpt-5-mini", label: "GPT-5 mini" },
+    ],
+    createModel: (apiKey, modelId) => createOpenAI({ apiKey })(modelId),
+  },
   custom: {
     id: "custom",
     label: "Custom (OpenAI-compatible)",
@@ -101,7 +126,7 @@ export async function resolveLanguageModel(
 
   if (!apiKey) {
     throw new Error(
-      `No API key for ${PROVIDERS[providerId].label}. Run /login to add one.`,
+      `No API key for ${PROVIDERS[providerId].label}. Open /model to add one.`,
     );
   }
   return PROVIDERS[providerId].createModel(apiKey, modelId);

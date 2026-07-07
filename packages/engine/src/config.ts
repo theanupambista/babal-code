@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
-import { DEFAULT_MODEL, DEFAULT_PROVIDER, type ProviderId } from "./providers";
+import { type ProviderId } from "./providers";
 import { BABALCODE_DIR, configFile } from "./session/paths";
 
 /**
@@ -118,8 +118,10 @@ export async function updateCustomModel(
 }
 
 /**
- * Remove a custom model. If it was the active selection, fall back to the built-in
- * defaults so the agent never points at a deleted endpoint.
+ * Remove a custom model. If it was the active selection, clear the selection
+ * entirely (no model selected) rather than silently jumping to a built-in default —
+ * the user picks the next model explicitly. The agent never points at a deleted
+ * endpoint because the selection is now empty.
  */
 export async function deleteCustomModel(id: string): Promise<void> {
   const config = await readConfig();
@@ -128,8 +130,8 @@ export async function deleteCustomModel(id: string): Promise<void> {
     customModels: (config.customModels ?? []).filter((m) => m.id !== id),
   };
   if (config.provider === "custom" && config.customModelId === id) {
-    next.provider = DEFAULT_PROVIDER;
-    next.model = DEFAULT_MODEL;
+    next.provider = undefined;
+    next.model = undefined;
     next.customModelId = undefined;
   }
   await writeConfig(next);
@@ -137,16 +139,25 @@ export async function deleteCustomModel(id: string): Promise<void> {
 
 // ── Selection ───────────────────────────────────────────────────────────────
 
-/** The chosen provider + model, falling back to the built-in defaults. */
-export async function getModelSelection(): Promise<{
+/** A resolved model choice: a built-in provider + model, or a custom entry by id. */
+export type ModelSelection = {
   provider: ProviderId;
   model: string;
   customModelId?: string;
-}> {
+};
+
+/**
+ * The chosen provider + model, or `null` when nothing has been selected yet. There
+ * is no implicit default: a fresh install (or a config whose active model was
+ * deleted) has no selection, and the UI must prompt the user to pick one before a
+ * message can be sent. Callers must handle the `null` case.
+ */
+export async function getModelSelection(): Promise<ModelSelection | null> {
   const config = await readConfig();
+  if (!config.provider || !config.model) return null;
   return {
-    provider: config.provider ?? DEFAULT_PROVIDER,
-    model: config.model ?? DEFAULT_MODEL,
+    provider: config.provider,
+    model: config.model,
     customModelId: config.customModelId,
   };
 }

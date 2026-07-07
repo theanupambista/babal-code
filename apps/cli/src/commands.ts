@@ -34,7 +34,6 @@ export const SLASH_COMMANDS: readonly SlashCommand[] = [
   { command: SESSIONS_COMMAND, description: "Browse and resume past sessions" },
   { command: MODELS_COMMAND, description: "Switch the active model" },
   { command: CUSTOM_COMMAND, description: "Set up an OpenAI-compatible endpoint" },
-  { command: ROUTES.login, description: "Update your API key" },
   { command: "/clear", description: "Clear the conversation and return home" },
   { command: "/exit", description: "Quit babal code" },
 ];

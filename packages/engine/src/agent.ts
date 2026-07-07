@@ -42,7 +42,11 @@ export async function runAgent({
   // Resolve the provider/model (from `/model` config) and key (env → keychain) per
   // turn, so switching either via slash command takes effect on the next message
   // with no restart. A rejected promise here surfaces as the CLI's error banner.
-  const { provider, model, customModelId } = await getModelSelection();
+  const selection = await getModelSelection();
+  if (!selection) {
+    throw new Error("No model selected. Open /model to choose a model.");
+  }
+  const { provider, model, customModelId } = selection;
   const providerInfo = PROVIDERS[provider];
   const apiKey =
     provider === "custom"
@@ -51,7 +55,7 @@ export async function runAgent({
         : resolveApiKey("custom")
       : resolveApiKey(provider);
   if (providerInfo.requiresApiKey !== false && !apiKey) {
-    throw new Error(`No API key for ${providerInfo.label}. Run /login to add one.`);
+    throw new Error(`No API key for ${providerInfo.label}. Open /model to add one.`);
   }
 
   const languageModel = await resolveLanguageModel(provider, model, apiKey);

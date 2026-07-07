@@ -5,9 +5,10 @@ import { RouterProvider } from "react-router";
 import { createAppRouter } from "./router";
 import { LayerProvider } from "./services/layer";
 
-// Bring-your-own-key, but no longer a hard requirement at startup: if no key is
-// resolvable the router opens on `/login` (see `router.tsx`) so the user can add
-// one from inside the TUI. Keys live in the OS keychain; the env var still works.
+// Bring-your-own-key, but not a hard requirement at startup: the app always opens
+// on home. If no model is selected, the prompt shows a "No model" state and the
+// user picks one via `/model`, which collects any missing key inline. Keys live in
+// the OS keychain; the provider env vars still work.
 //
 // `exitOnCtrlC: false` hands Ctrl+C to the layer service instead of quitting
 // unconditionally: `LayerProvider` routes it through the stack (so a focused
