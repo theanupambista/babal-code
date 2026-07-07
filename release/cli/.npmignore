@@ -1,0 +1,8 @@
+src/
+*.ts
+*.tsx
+tsconfig*.json
+.agents/
+.github/
+*.map
+.env*

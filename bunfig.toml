@@ -1,3 +1,7 @@
 # Stricter dependency isolation for the workspace (prevents phantom deps).
 [install]
 linker = "isolated"
+
+# Production builds must never ship source maps (see npm publish checklist).
+[build]
+sourcemap = "none"

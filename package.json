@@ -10,7 +10,11 @@
   "scripts": {
     "dev": "bun --watch run apps/cli/src/index.tsx",
     "start": "bun run apps/cli/src/index.tsx",
-    "typecheck": "bun run --filter '*' typecheck"
+    "typecheck": "bun run --filter '*' typecheck",
+    "release:build": "bun run scripts/release/build.ts",
+    "release:prepare": "bun run scripts/release/prepare.ts",
+    "release:pack": "bun run scripts/release/pack.ts",
+    "release:publish": "bun run scripts/release/publish.ts"
   },
   "devDependencies": {
     "@types/bun": "latest",

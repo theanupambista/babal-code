@@ -1,3 +1,4 @@
+import { dirname, join } from "node:path";
 import { rgPath } from "@vscode/ripgrep";
 
 /**
@@ -5,14 +6,31 @@ import { rgPath } from "@vscode/ripgrep";
  * tools. Ripgrep is vendored via `@vscode/ripgrep` (a per-platform `rg` binary),
  * so both tools work out of the box with no system install; if that binary is
  * somehow unavailable we fall back to an `rg` on PATH.
+ *
+ * Release builds ship `rg` / `rg.exe` next to the compiled CLI binary; we check
+ * that path first so standalone executables work without node_modules.
  */
 
 /** Resolve the ripgrep binary once, lazily, preferring the vendored one. */
 let cachedRgBinary: string | undefined;
 async function resolveRgBinary(): Promise<string> {
-  if (cachedRgBinary === undefined) {
-    cachedRgBinary = rgPath && (await Bun.file(rgPath).exists()) ? rgPath : "rg";
+  if (cachedRgBinary !== undefined) return cachedRgBinary;
+
+  const sibling =
+    process.platform === "win32"
+      ? join(dirname(process.execPath), "rg.exe")
+      : join(dirname(process.execPath), "rg");
+  if (await Bun.file(sibling).exists()) {
+    cachedRgBinary = sibling;
+    return cachedRgBinary;
   }
+
+  if (rgPath && (await Bun.file(rgPath).exists())) {
+    cachedRgBinary = rgPath;
+    return cachedRgBinary;
+  }
+
+  cachedRgBinary = "rg";
   return cachedRgBinary;
 }
 

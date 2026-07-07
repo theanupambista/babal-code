@@ -1,0 +1,25 @@
+{
+  "name": "@babalcode/cli",
+  "version": "{{VERSION}}",
+  "description": "Terminal coding agent — AI pair programmer in your shell",
+  "license": "SEE LICENSE IN LICENSE",
+  "type": "module",
+  "bin": {
+    "babalcode": "bin/babalcode.js"
+  },
+  "files": [
+    "bin",
+    "README.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "keywords": [
+    "cli",
+    "ai",
+    "coding-agent",
+    "terminal",
+    "tui"
+  ]
+}

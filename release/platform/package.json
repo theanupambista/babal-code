@@ -1,0 +1,13 @@
+{
+  "name": "{{PACKAGE_NAME}}",
+  "version": "{{VERSION}}",
+  "description": "Prebuilt babalcode CLI binary for {{PLATFORM_ID}}",
+  "license": "SEE LICENSE IN LICENSE",
+  "os": ["darwin"],
+  "cpu": ["arm64"],
+  "preferUnplugged": true,
+  "files": [
+    "bin",
+    "LICENSE"
+  ]
+}
