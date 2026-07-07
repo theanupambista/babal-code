@@ -39,7 +39,7 @@ export const PLATFORMS: readonly PlatformConfig[] = [
     cpu: ["x64"],
     cliBinary: "babalcode",
     rgBinary: "rg",
-    runner: "macos-latest",
+    runner: "macos-15-intel",
   },
   {
     id: "linux-arm64",

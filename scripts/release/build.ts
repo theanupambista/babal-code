@@ -34,20 +34,57 @@ function parsePlatformArg(): PlatformId {
   return getPlatform(id).id;
 }
 
+async function readResolvedVersion(packageName: string, cwd: string): Promise<string> {
+  const proc = Bun.spawn(
+    [
+      "bun",
+      "-e",
+      `import { readFileSync } from "node:fs"; import { createRequire } from "node:module"; const r = createRequire(import.meta.dir + "/"); const p = r.resolve("${packageName}/package.json"); console.log(JSON.parse(readFileSync(p, "utf8")).version);`,
+    ],
+    { cwd, stdout: "pipe", stderr: "pipe" },
+  );
+  const [stdout, stderr, code] = await Promise.all([
+    new Response(proc.stdout).text(),
+    new Response(proc.stderr).text(),
+    proc.exited,
+  ]);
+  if (code !== 0) {
+    throw new Error(`Could not resolve ${packageName} version in ${cwd}: ${stderr.trim()}`);
+  }
+  return stdout.trim();
+}
+
 async function ensureCrossArchNativeDeps(platform: PlatformConfig): Promise<void> {
   const host = `${process.platform}-${process.arch}`;
   if (host === platform.id) return;
 
   const opentuiPkg = opentuiPlatformPackage(platform.id);
   const ripgrepPkg = ripgrepPlatformPackage(platform.id);
-  console.log(`Installing cross-arch native deps for ${platform.id}: ${opentuiPkg}, ${ripgrepPkg}`);
-
-  const proc = Bun.spawn(
-    ["bun", "add", opentuiPkg, ripgrepPkg, "--optional", "--no-save"],
-    { cwd: repoRoot, stdout: "inherit", stderr: "inherit" },
+  const opentuiVersion = await readResolvedVersion("@opentui/core", join(repoRoot, "apps/cli"));
+  const ripgrepVersion = await readResolvedVersion(
+    "@vscode/ripgrep",
+    join(repoRoot, "packages/engine"),
   );
-  const code = await proc.exited;
-  if (code !== 0) throw new Error(`bun add failed with exit code ${code}`);
+
+  console.log(
+    `Installing cross-arch native deps for ${platform.id}: ${opentuiPkg}@${opentuiVersion}, ${ripgrepPkg}@${ripgrepVersion}`,
+  );
+
+  const opentuiProc = Bun.spawn(
+    ["bun", "add", `${opentuiPkg}@${opentuiVersion}`, "--optional", "--no-save"],
+    { cwd: join(repoRoot, "apps/cli"), stdout: "inherit", stderr: "inherit" },
+  );
+  if ((await opentuiProc.exited) !== 0) {
+    throw new Error(`bun add ${opentuiPkg}@${opentuiVersion} failed`);
+  }
+
+  const rgProc = Bun.spawn(
+    ["bun", "add", `${ripgrepPkg}@${ripgrepVersion}`, "--optional", "--no-save"],
+    { cwd: join(repoRoot, "packages/engine"), stdout: "inherit", stderr: "inherit" },
+  );
+  if ((await rgProc.exited) !== 0) {
+    throw new Error(`bun add ${ripgrepPkg}@${ripgrepVersion} failed`);
+  }
 }
 
 async function resolveRipgrepBinary(platform: PlatformConfig): Promise<string> {
