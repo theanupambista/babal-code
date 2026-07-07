@@ -10,13 +10,16 @@
  */
 import { ROUTES } from "./routes";
 
-/** `/models` — an action (opens the model picker dialog), not a route. */
+/** `/models` — opens the model picker dialog (connected models only). */
 export const MODELS_COMMAND = "/models";
 
-/** `/custom` — an action (opens the model picker dialog on its add-model view), not a route. */
+/** `/connect` — opens the provider key management dialog. */
+export const CONNECT_COMMAND = "/connect";
+
+/** `/custom` — opens the add-custom-model dialog. */
 export const CUSTOM_COMMAND = "/custom";
 
-/** `/sessions` — an action (opens the session picker dialog), not a route. */
+/** `/sessions` — opens the session picker dialog. */
 export const SESSIONS_COMMAND = "/sessions";
 
 export type SlashCommand = {
@@ -33,7 +36,8 @@ export type SlashCommand = {
 export const SLASH_COMMANDS: readonly SlashCommand[] = [
   { command: SESSIONS_COMMAND, description: "Browse and resume past sessions" },
   { command: MODELS_COMMAND, description: "Switch the active model" },
-  { command: CUSTOM_COMMAND, description: "Set up an OpenAI-compatible endpoint" },
+  { command: CONNECT_COMMAND, description: "Connect or update a provider API key" },
+  { command: CUSTOM_COMMAND, description: "Add an OpenAI-compatible endpoint" },
   { command: "/clear", description: "Clear the conversation and return home" },
   { command: "/exit", description: "Quit babal code" },
 ];
@@ -43,12 +47,13 @@ export type SlashCommandContext = {
   navigate: (path: string) => void;
   /** Tear down the renderer and quit, restoring the terminal. Used by `/exit`. */
   exit: () => void;
-  /**
-   * Open the model picker as a dialog over the current screen. Used by `/models`
-   * (default list view) and `/custom` (`"add"` — jump straight to the add-model form).
-   */
-  openModel: (view?: "add") => void;
-  /** Open the session picker as a dialog over the current screen. Used by `/sessions`. */
+  /** Open the model picker dialog (`/models`). */
+  openModels: () => void;
+  /** Open the provider key dialog (`/connect`). */
+  openConnect: () => void;
+  /** Open the custom endpoint dialog (`/custom`). */
+  openCustom: (view?: "add" | "manage") => void;
+  /** Open the session picker dialog (`/sessions`). */
   openSessions: () => void;
 };
 
@@ -56,14 +61,7 @@ export type SlashCommandContext = {
  * If `input` is a *bare* slash command — a lone `/token` at index 0 with no
  * trailing space, arguments, or surrounding quotes (see `slashQuery`) — execute
  * it and return `true`. Otherwise return `false`, leaving the caller to submit
- * the input as ordinary text. This is what lets a user type a command's literal
- * name mid-sentence, in quotes, or with a trailing space without triggering it.
- *
- * Most commands are route paths and simply navigate there; `/clear` returns to
- * the home screen, `/exit` quits the app, `/sessions`/`/models` open their
- * pickers as dialogs, and `/custom` opens the model picker on its add-model view.
- * Unknown (but still bare) paths navigate anyway, falling through to the `*`
- * NotFound screen.
+ * the input as ordinary text.
  */
 export function runSlashCommand(input: string, ctx: SlashCommandContext): boolean {
   if (slashQuery(input) === null) return false;
@@ -79,10 +77,13 @@ export function runSlashCommand(input: string, ctx: SlashCommandContext): boolea
       ctx.openSessions();
       return true;
     case MODELS_COMMAND:
-      ctx.openModel();
+      ctx.openModels();
+      return true;
+    case CONNECT_COMMAND:
+      ctx.openConnect();
       return true;
     case CUSTOM_COMMAND:
-      ctx.openModel("add");
+      ctx.openCustom("add");
       return true;
     default:
       ctx.navigate(path);
@@ -92,9 +93,7 @@ export function runSlashCommand(input: string, ctx: SlashCommandContext): boolea
 
 /**
  * If `text` is a bare slash-command query — a single `/token` with no whitespace —
- * return the lowercased token after the slash (possibly empty). Otherwise `null`,
- * meaning the input isn't a command and the menu should stay closed. Once the user
- * types a space or newline the input is no longer a command, so we bail.
+ * return the lowercased token after the slash (possibly empty). Otherwise `null`.
  */
 export function slashQuery(text: string): string | null {
   if (!text.startsWith("/")) return null;

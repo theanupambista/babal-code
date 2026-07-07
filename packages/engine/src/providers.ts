@@ -3,7 +3,7 @@ import { createGoogleGenerativeAI } from "@ai-sdk/google";
 import { createOpenAI } from "@ai-sdk/openai";
 import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
 import type { LanguageModel } from "ai";
-import { getCustomConfig, listCustomModels } from "./config";
+import { getCustomConfig } from "./config";
 import { configFile } from "./session/paths";
 
 /** A selectable model within a provider's curated catalog. */
@@ -11,12 +11,6 @@ export type ModelInfo = {
   id: string;
   label: string;
 };
-
-/** Sentinel model id for the /model picker “set up custom” entry. */
-export const CUSTOM_SETUP_MODEL_ID = "__custom_setup__";
-
-/** Sentinel model id for the /model picker “manage custom models” entry. */
-export const MANAGE_CUSTOM_MODELS_ID = "__manage_custom__";
 
 export type ModelOption = {
   provider: ProviderId;
@@ -126,60 +120,10 @@ export async function resolveLanguageModel(
 
   if (!apiKey) {
     throw new Error(
-      `No API key for ${PROVIDERS[providerId].label}. Open /model to add one.`,
+      `No API key for ${PROVIDERS[providerId].label}. Open /connect to add one.`,
     );
   }
   return PROVIDERS[providerId].createModel(apiKey, modelId);
-}
-
-/**
- * All models available in the `/model` picker. Built-in provider catalogs first,
- * then every user-added custom model (each keyed by its stable entry `id` so two
- * endpoints are individually selectable), then the "set up new endpoint" action.
- */
-export async function listModelOptions(): Promise<ModelOption[]> {
-  const options: ModelOption[] = Object.values(PROVIDERS)
-    .filter((provider) => provider.id !== "custom")
-    .flatMap((provider) =>
-      provider.models.map((m) => ({
-        provider: provider.id as ProviderId,
-        id: m.id,
-        label: m.label,
-        description: m.id,
-        section: provider.label,
-      })),
-    );
-
-  const customModels = await listCustomModels();
-  for (const entry of customModels) {
-    options.push({
-      provider: "custom",
-      id: entry.id,
-      label: entry.label ?? entry.model,
-      description: entry.model,
-      section: "Custom",
-    });
-  }
-
-  if (customModels.length > 0) {
-    options.push({
-      provider: "custom",
-      id: MANAGE_CUSTOM_MODELS_ID,
-      label: "Manage custom models",
-      description: `edit · update key · delete (${customModels.length})`,
-      section: "Custom",
-    });
-  }
-
-  options.push({
-    provider: "custom",
-    id: CUSTOM_SETUP_MODEL_ID,
-    label: "Add new model",
-    description: "Add a new OpenAI-compatible model",
-    section: "Custom",
-  });
-
-  return options;
 }
 
 /**

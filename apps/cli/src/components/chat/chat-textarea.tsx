@@ -287,12 +287,12 @@ export function ChatTextarea({
     // parent trims for the message path.
     const value = textareaRef.current?.plainText ?? "";
     if (value.trim().length === 0) return;
-    // Slash commands (e.g. /model) always go through so the user can pick a model;
+    // Slash commands (e.g. /models) always go through so the user can pick a model;
     // a plain message with nothing selected is blocked with an inline hint instead
     // of failing at send time in the agent.
     const isCommand = value.trim().startsWith("/");
     if (!isCommand && !hasModel) {
-      setNotice("No model selected — press /model to choose one.");
+      setNotice("No model selected — use /models or /connect.");
       return;
     }
     onSubmit?.(value, modeId);
@@ -389,7 +389,7 @@ export function ChatTextarea({
                 <>
                   <span fg={colors.muted}> · </span>
                   <span fg={colors.accent}>No model</span>
-                  <span fg={colors.muted}> — /model to choose</span>
+                  <span fg={colors.muted}> — /models or /connect</span>
                 </>
               ) : modelLabel && providerLabel ? (
                 <>

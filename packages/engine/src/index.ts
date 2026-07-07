@@ -13,10 +13,7 @@ export {
   PROVIDERS,
   DEFAULT_PROVIDER,
   DEFAULT_MODEL,
-  CUSTOM_SETUP_MODEL_ID,
-  MANAGE_CUSTOM_MODELS_ID,
   resolveLanguageModel,
-  listModelOptions,
   getModelDisplayLabel,
   type ProviderId,
   type ProviderInfo,
@@ -25,6 +22,16 @@ export {
 } from "./providers";
 export {
   getModelSelection,
+  isSelectionAvailable,
+  listConnectedModelOptions,
+  listProviderConnections,
+  hasStoredProviderKey,
+  type ProviderConnection,
+} from "./model-catalog";
+export {
+  readModelSelection,
+  clearModelSelection,
+  clearModelSelectionForProvider,
   setModelSelection,
   selectCustomModel,
   getSelectedCustomModel,

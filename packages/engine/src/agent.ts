@@ -6,7 +6,7 @@ import {
   type UIMessage,
   type UIMessageChunk,
 } from "ai";
-import { getModelSelection } from "./config";
+import { getModelSelection } from "./model-catalog";
 import { resolveApiKey, resolveCustomModelKey } from "./credentials";
 import { getMode } from "./modes";
 import { permission } from "./permission";
@@ -39,12 +39,12 @@ export async function runAgent({
     void appendMessage(sessionId, lastMessage).catch(() => {});
   }
 
-  // Resolve the provider/model (from `/model` config) and key (env → keychain) per
+  // Resolve the provider/model (from `/models` config) and key (env → keychain) per
   // turn, so switching either via slash command takes effect on the next message
   // with no restart. A rejected promise here surfaces as the CLI's error banner.
   const selection = await getModelSelection();
   if (!selection) {
-    throw new Error("No model selected. Open /model to choose a model.");
+    throw new Error("No model selected. Use /models to choose a model.");
   }
   const { provider, model, customModelId } = selection;
   const providerInfo = PROVIDERS[provider];
@@ -55,7 +55,7 @@ export async function runAgent({
         : resolveApiKey("custom")
       : resolveApiKey(provider);
   if (providerInfo.requiresApiKey !== false && !apiKey) {
-    throw new Error(`No API key for ${providerInfo.label}. Open /model to add one.`);
+    throw new Error(`No API key for ${providerInfo.label}. Use /connect to add one.`);
   }
 
   const languageModel = await resolveLanguageModel(provider, model, apiKey);

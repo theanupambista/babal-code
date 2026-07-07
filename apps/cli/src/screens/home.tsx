@@ -1,48 +1,25 @@
-import { useRenderer } from "@opentui/react";
 import { generateId } from "ai";
 import { DEFAULT_MODE_ID } from "@babalcode/engine";
 import type { ModeId } from "@babalcode/engine";
 import { useState } from "react";
 import { useNavigate } from "react-router";
-import { runSlashCommand } from "../commands";
 import { CHAT_MAX_WIDTH, ChatTextarea } from "../components/chat";
-import {
-  ModelDialogBody,
-  SESSION_DIALOG_WIDTH,
-  SessionListBody,
-  useDialog,
-} from "../components/dialog";
 import { Logo } from "../components/logo";
+import { useAppDialogs } from "../hooks/use-app-dialogs.tsx";
 import { ROUTES } from "../routes";
 
 /**
  * Home screen: a centred ASCII wordmark above the prompt — the launcher.
- *
- * A slash command (input starting with `/`) navigates to the matching route.
- * Any other input starts a new conversation: we mint a client-side session id
- * and navigate to `/sessions/:id`, handing the typed text to the Chat screen
- * (which owns the `useChat` instance) so the first turn isn't lost to a remount.
  */
 export function Home() {
   const navigate = useNavigate();
-  const renderer = useRenderer();
-  const { open } = useDialog();
+  const { runCommand } = useAppDialogs();
   const [modeId, setModeId] = useState<ModeId>(DEFAULT_MODE_ID);
 
-  const openModel = (view?: "add") =>
-    open({ title: "Select model", body: <ModelDialogBody initialView={view} /> });
-  const openSessions = () =>
-    open({ title: "Sessions", width: SESSION_DIALOG_WIDTH, body: <SessionListBody /> });
-
   const handleSubmit = (value: string, modeId: ModeId) => {
-    // A bare slash command runs as a command (navigate to its route, or `/clear`/
-    // `/exit`); the same text with trailing args, in quotes, or mid-sentence is
-    // not bare and falls through to be submitted as a normal message.
-    if (runSlashCommand(value, { navigate, exit: () => renderer.destroy(), openModel, openSessions }))
-      return;
+    if (runCommand(value)) return;
     const text = value.trim();
     if (!text) return;
-    // Carry the chosen mode so the Chat screen's first turn runs in it.
     const id = generateId();
     navigate(ROUTES.session(id), { state: { initialText: text, initialModeId: modeId } });
   };

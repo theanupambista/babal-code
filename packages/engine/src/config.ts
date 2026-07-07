@@ -30,7 +30,7 @@ export type CustomConfig = {
 
 /**
  * Global (not per-session) preferences persisted as a single JSON blob at
- * `~/.babalcode/config.json`: the default provider + model chosen via `/model`, plus
+ * `~/.babalcode/config.json`: the default provider + model chosen via `/models`, plus
  * the list of user-added custom models. Kept separate from session history and from
  * credentials (which live in the keychain). Missing / corrupt file is treated as "no
  * preferences yet".
@@ -147,12 +147,11 @@ export type ModelSelection = {
 };
 
 /**
- * The chosen provider + model, or `null` when nothing has been selected yet. There
- * is no implicit default: a fresh install (or a config whose active model was
- * deleted) has no selection, and the UI must prompt the user to pick one before a
- * message can be sent. Callers must handle the `null` case.
+ * The raw persisted selection from config, without checking whether the provider
+ * is still connected. Prefer `getModelSelection()` from `model-catalog.ts`, which
+ * validates and clears stale entries.
  */
-export async function getModelSelection(): Promise<ModelSelection | null> {
+export async function readModelSelection(): Promise<ModelSelection | null> {
   const config = await readConfig();
   if (!config.provider || !config.model) return null;
   return {
@@ -160,6 +159,24 @@ export async function getModelSelection(): Promise<ModelSelection | null> {
     model: config.model,
     customModelId: config.customModelId,
   };
+}
+
+/** Clear the active model selection (e.g. when its provider is disconnected). */
+export async function clearModelSelection(): Promise<void> {
+  const config = await readConfig();
+  await writeConfig({
+    ...config,
+    provider: undefined,
+    model: undefined,
+    customModelId: undefined,
+  });
+}
+
+/** Clear the selection when it points at a provider that was just disconnected. */
+export async function clearModelSelectionForProvider(provider: ProviderId): Promise<void> {
+  const config = await readConfig();
+  if (config.provider !== provider) return;
+  await clearModelSelection();
 }
 
 /** Persist a built-in provider + model chosen via the picker (clears custom selection). */

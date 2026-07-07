@@ -7,8 +7,8 @@ import { LayerProvider } from "./services/layer";
 
 // Bring-your-own-key, but not a hard requirement at startup: the app always opens
 // on home. If no model is selected, the prompt shows a "No model" state and the
-// user picks one via `/model`, which collects any missing key inline. Keys live in
-// the OS keychain; the provider env vars still work.
+// user connects providers via `/connect` or picks a model via `/models`. Keys live
+// in the OS keychain; the provider env vars still work.
 //
 // `exitOnCtrlC: false` hands Ctrl+C to the layer service instead of quitting
 // unconditionally: `LayerProvider` routes it through the stack (so a focused

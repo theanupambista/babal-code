@@ -1,6 +1,5 @@
 import { useChat } from "@ai-sdk/react";
 import type { ScrollBoxRenderable } from "@opentui/core";
-import { useRenderer } from "@opentui/react";
 import { clearReadTracker, DEFAULT_MODE_ID, isModeId, permission } from "@babalcode/engine";
 import type { ModeId } from "@babalcode/engine";
 import { isToolUIPart, type UIMessage } from "ai";
@@ -16,13 +15,7 @@ import {
   renderMessageParts,
   ToolSelectionContext,
 } from "../components/chat";
-import {
-  ModelDialogBody,
-  SESSION_DIALOG_WIDTH,
-  SessionListBody,
-  useDialog,
-} from "../components/dialog";
-import { runSlashCommand } from "../commands";
+import { useAppDialogs } from "../hooks/use-app-dialogs.tsx";
 import { useLayerKeyboard } from "../services/layer";
 import { loadMessages } from "../lib/session";
 import { InProcessTransport } from "../lib/transport";
@@ -130,14 +123,7 @@ function ChatView({
   initialText?: string;
   initialModeId?: ModeId;
 }) {
-  const navigate = useNavigate();
-  const renderer = useRenderer();
-  const { open } = useDialog();
-
-  const openModel = (view?: "add") =>
-    open({ title: "Select model", body: <ModelDialogBody initialView={view} /> });
-  const openSessions = () =>
-    open({ title: "Sessions", width: SESSION_DIALOG_WIDTH, body: <SessionListBody /> });
+  const { runCommand } = useAppDialogs();
 
   const [modeId, setModeId] = useState<ModeId>(initialModeId ?? DEFAULT_MODE_ID);
 
@@ -233,8 +219,7 @@ function ChatView({
     if (isChatBusy(status)) return;
     // Only a bare slash command runs as a command; the same text with trailing
     // args, in quotes, or mid-sentence falls through to be sent as a message.
-    if (runSlashCommand(value, { navigate, exit: () => renderer.destroy(), openModel, openSessions }))
-      return;
+    if (runCommand(value)) return;
     const text = value.trim();
     if (!text) return;
     sendMessage({ text, metadata: { modeId: mode } }, { body: { modeId: mode } });

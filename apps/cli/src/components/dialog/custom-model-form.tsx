@@ -21,6 +21,8 @@ type CustomModelFormProps = {
   onDone: () => void;
   /** When set, edit this model in place instead of adding a new one. */
   edit?: EditTarget;
+  /** Open the manage-models view (add flow only). */
+  onManage?: () => void;
 };
 
 /** A labelled bordered text field; its border lights up while focused. */
@@ -85,7 +87,7 @@ function Field({
  * (child key handlers register first), so those keys drive the form rather than
  * editing text or dismissing the whole dialog.
  */
-export function CustomModelForm({ onBack, onDone, edit }: CustomModelFormProps) {
+export function CustomModelForm({ onBack, onDone, edit, onManage }: CustomModelFormProps) {
   const isActive = useIsActiveLayer();
   // API key only applies when adding; editing is info-only.
   const fields: readonly FieldName[] = edit
@@ -134,6 +136,10 @@ export function CustomModelForm({ onBack, onDone, edit }: CustomModelFormProps) 
   useLayerKeyboard((key) => {
     if (key.name === "escape") {
       onBack();
+      return true;
+    }
+    if (!edit && onManage && key.name === "m") {
+      onManage();
       return true;
     }
     if (key.name === "tab") {
@@ -205,7 +211,8 @@ export function CustomModelForm({ onBack, onDone, edit }: CustomModelFormProps) 
       ) : null}
 
       <text fg={colors.muted}>
-        tab/↑↓ move · enter next · enter on {edit ? "Model id" : "API key"} saves · esc back
+        enter on {edit ? "Model id" : "API key"} saves
+        {!edit && onManage ? " · m manage existing models" : ""}
       </text>
     </box>
   );
