@@ -1,7 +1,6 @@
 import { appendFile, mkdir, readdir, readFile } from "node:fs/promises";
 import path from "node:path";
 import { generateId, type UIMessage } from "ai";
-import { MODEL_ID } from "../constants";
 import { projectDir, sessionFile } from "./paths";
 
 /**
@@ -35,6 +34,13 @@ export type SessionSummary = {
   updatedAt: string;
   preview: string | null;
 };
+
+/** Model label stamped on user messages by `runAgent` for the session picker. */
+function modelFromMetadata(metadata: unknown): string | null {
+  if (typeof metadata !== "object" || metadata === null) return null;
+  const model = (metadata as { model?: unknown }).model;
+  return typeof model === "string" ? model : null;
+}
 
 /** First text snippet in a message's parts — a human label for the session list. */
 function previewFromParts(parts: unknown): string | null {
@@ -158,17 +164,18 @@ export async function listSessions(): Promise<SessionSummary[]> {
     const first = events[0];
     const last = events[events.length - 1];
     let preview: string | null = null;
+    let model: string | null = null;
     for (const event of events) {
-      if (event.type === "message" && event.role === "user") {
-        preview = previewFromParts(event.parts);
-        break;
-      }
+      if (event.type !== "message" || event.role !== "user") continue;
+      if (!preview) preview = previewFromParts(event.parts);
+      if (!model) model = modelFromMetadata(event.metadata);
+      if (preview && model) break;
     }
 
     summaries.push({
       id,
       title: null,
-      model: MODEL_ID,
+      model,
       createdAt: first?.ts ?? new Date(0).toISOString(),
       updatedAt: last?.ts ?? new Date(0).toISOString(),
       preview,

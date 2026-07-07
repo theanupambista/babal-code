@@ -6,7 +6,7 @@ import {
   type UIMessage,
   type UIMessageChunk,
 } from "ai";
-import { getModelSelection } from "./model-catalog";
+import { getModelSelection, resolveSessionModelLabel } from "./model-catalog";
 import { resolveApiKey, resolveCustomModelKey } from "./credentials";
 import { getMode } from "./modes";
 import { permission } from "./permission";
@@ -35,16 +35,26 @@ export async function runAgent({
   mode: string;
   abortSignal?: AbortSignal;
 }): Promise<ReadableStream<UIMessageChunk>> {
-  // Record the just-sent user message up front so it is kept even if the turn fails.
-  const lastMessage = messages[messages.length - 1];
-  if (lastMessage?.role === "user") {
-    void appendMessage(sessionId, lastMessage).catch(() => {});
-  }
-
   // Resolve the provider/model (from `/models` config) and key (env → keychain) per
   // turn, so switching either via slash command takes effect on the next message
   // with no restart. A rejected promise here surfaces as the CLI's error banner.
   const selection = await getModelSelection();
+
+  // Record the just-sent user message up front so it is kept even if the turn fails.
+  // Stamp the active model on the first user turn so the session picker can show it.
+  const lastMessage = messages[messages.length - 1];
+  if (lastMessage?.role === "user") {
+    const baseMetadata =
+      typeof lastMessage.metadata === "object" && lastMessage.metadata !== null
+        ? lastMessage.metadata
+        : {};
+    const model = selection ? await resolveSessionModelLabel(selection) : undefined;
+    void appendMessage(sessionId, {
+      ...lastMessage,
+      metadata: model ? { ...baseMetadata, model } : baseMetadata,
+    }).catch(() => {});
+  }
+
   if (!selection) {
     throw new Error("No model selected. Use /models to choose a model.");
   }

@@ -97,6 +97,17 @@ export async function listConnectedModelOptions(): Promise<ModelOption[]> {
   return options;
 }
 
+/** Human-readable model label stored on session messages for the session picker. */
+export async function resolveSessionModelLabel(
+  selection: ModelSelection,
+): Promise<string> {
+  if (selection.provider === "custom" && selection.customModelId) {
+    const entry = await getCustomModel(selection.customModelId);
+    return entry?.label ?? entry?.model ?? selection.model;
+  }
+  return selection.model;
+}
+
 /** Whether a built-in provider's key is stored in the keychain (not env). */
 export function hasStoredProviderKey(provider: ProviderId): boolean {
   if (provider === "custom") return false;
