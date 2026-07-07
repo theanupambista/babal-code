@@ -12,23 +12,11 @@
       "sourceType": "well-known",
       "computedHash": "6f0a017d6943caefcdd5742fcb849788641d3003ba20703672935677f6cb32cf"
     },
-    "hono": {
-      "source": "yusukebe/hono-skill",
-      "sourceType": "github",
-      "skillPath": "skills/hono/SKILL.md",
-      "computedHash": "24bad73932f309cec73a5a9171b838f59050990a634d8590c2d2c204507e64f9"
-    },
     "opentui": {
       "source": "msmps/opentui-skill",
       "sourceType": "github",
       "skillPath": "skill/opentui/SKILL.md",
       "computedHash": "ebfea5f246935e49225f7dd9b03a15721fd4d00c83f2c862219de60941480ff8"
-    },
-    "prisma-database-setup": {
-      "source": "prisma/skills",
-      "sourceType": "github",
-      "skillPath": "prisma-database-setup/SKILL.md",
-      "computedHash": "0d6f44ac34b1ed3f8ed2970ecf90483d0f658fd1d204458f62bfefa28f31b095"
     }
   }
 }

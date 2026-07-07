@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import { useContext } from "react";
 import { colors } from "../../theme";
 import { EmptyBorder } from "../border";
+import { markdownSyntaxStyle } from "./markdown-style";
 import { ToolSelectionContext } from "./tool-selection";
 
 /** Collapsed tool output shows at most this many lines before truncating. */
@@ -51,13 +52,35 @@ export function UserMessage({
 }
 
 /**
- * A message authored by the assistant — plain text, no label, no border. Indented
- * by `TEXT_INSET` so it lines up with the bordered messages and the prompt input.
+ * A message authored by the assistant — rendered markdown, no label, no border.
+ * Indented by `TEXT_INSET` so it lines up with the bordered messages and the
+ * prompt input.
+ *
+ * `streaming` keeps the trailing block unstable while chunks are still arriving
+ * (mirrors the streaming/static split terminal agents use): pass it `true` for
+ * the actively-generating message and `false` once the turn completes, so the
+ * final trailing token parses cleanly.
+ *
+ * `conceal` hides the raw markdown markers (`**`, `##`, backticks…) and applies
+ * their styling instead — matching how opencode (glamour) and Claude Code render,
+ * where the source syntax never shows.
  */
-export function AssistantMessage({ children }: { children: ReactNode }) {
+export function AssistantMessage({
+  text,
+  streaming = false,
+}: {
+  text: string;
+  streaming?: boolean;
+}) {
   return (
     <box paddingLeft={TEXT_INSET} width="100%">
-      <text fg={colors.text}>{children}</text>
+      <markdown
+        content={text}
+        syntaxStyle={markdownSyntaxStyle()}
+        streaming={streaming}
+        conceal
+        fg={colors.text}
+      />
     </box>
   );
 }

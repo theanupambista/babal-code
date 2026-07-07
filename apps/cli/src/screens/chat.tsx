@@ -261,7 +261,13 @@ function ChatView({
       }
     >
       <ToolSelectionContext.Provider value={{ selectedId, expandedIds }}>
-        {messages.flatMap(renderMessageParts)}
+        {messages.flatMap((message, index) =>
+          renderMessageParts(message, {
+            // Stream-render only the last message while the turn is live, so its
+            // trailing markdown block finalizes when generation completes.
+            streaming: status === "streaming" && index === messages.length - 1,
+          }),
+        )}
       </ToolSelectionContext.Provider>
       {busyLabel && (
         <text fg={colors.muted} paddingLeft={4}>
