@@ -81,3 +81,4 @@ export {
   type PermissionRequest,
   type PermissionConfig,
 } from "./permission";
+export { checkForUpdate, isNewerVersion, type UpdateInfo } from "./update-check";

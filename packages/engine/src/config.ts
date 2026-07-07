@@ -44,6 +44,15 @@ type Config = {
   customModelId?: string;
   /** Every OpenAI-compatible model the user has added. */
   customModels?: CustomModel[];
+  /** Unix ms when the npm update check last ran. */
+  lastUpdateCheckAt?: number;
+  /** Latest `@babalcode/cli` version returned by the most recent check. */
+  cachedLatestVersion?: string;
+};
+
+export type UpdateCheckCache = {
+  lastCheckAt?: number;
+  latestVersion?: string;
 };
 
 async function readConfig(): Promise<Config> {
@@ -62,6 +71,27 @@ async function writeConfig(config: Config): Promise<void> {
 /** Trim trailing slashes so baseURLs compare and print consistently. */
 function normalizeBaseURL(raw: string): string {
   return raw.trim().replace(/\/+$/, "");
+}
+
+// ── Update check cache ──────────────────────────────────────────────────────
+
+/** Cached npm update-check state from `config.json`. */
+export async function getUpdateCheckCache(): Promise<UpdateCheckCache> {
+  const config = await readConfig();
+  return {
+    lastCheckAt: config.lastUpdateCheckAt,
+    latestVersion: config.cachedLatestVersion,
+  };
+}
+
+/** Persist npm update-check results for the 24h throttle. */
+export async function setUpdateCheckCache(cache: UpdateCheckCache): Promise<void> {
+  const config = await readConfig();
+  await writeConfig({
+    ...config,
+    lastUpdateCheckAt: cache.lastCheckAt,
+    cachedLatestVersion: cache.latestVersion,
+  });
 }
 
 // ── Custom model CRUD ───────────────────────────────────────────────────────
