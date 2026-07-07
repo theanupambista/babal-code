@@ -1,5 +1,4 @@
 import { dirname, join } from "node:path";
-import { rgPath } from "@vscode/ripgrep";
 
 /**
  * Shared ripgrep runner for the `grep` (content search) and `glob` (file search)
@@ -9,6 +8,10 @@ import { rgPath } from "@vscode/ripgrep";
  *
  * Release builds ship `rg` / `rg.exe` next to the compiled CLI binary; we check
  * that path first so standalone executables work without node_modules.
+ *
+ * `@vscode/ripgrep` throws at import time when its platform optionalDependency is
+ * missing (e.g. in a compiled exe with no node_modules), so we resolve it lazily
+ * only after the sibling binary check fails.
  */
 
 /** Resolve the ripgrep binary once, lazily, preferring the vendored one. */
@@ -25,9 +28,14 @@ async function resolveRgBinary(): Promise<string> {
     return cachedRgBinary;
   }
 
-  if (rgPath && (await Bun.file(rgPath).exists())) {
-    cachedRgBinary = rgPath;
-    return cachedRgBinary;
+  try {
+    const { rgPath } = await import("@vscode/ripgrep");
+    if (rgPath && (await Bun.file(rgPath).exists())) {
+      cachedRgBinary = rgPath;
+      return cachedRgBinary;
+    }
+  } catch {
+    // No node_modules platform package — fall through to PATH.
   }
 
   cachedRgBinary = "rg";
