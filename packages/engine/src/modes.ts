@@ -11,7 +11,7 @@ import type { codingTools } from "./tools";
 // Tool names a mode may allow — the keys of the codingTools registry.
 export type ToolName = keyof typeof codingTools;
 
-export type ModeId = "build" | "plan"; // widen as modes are added
+export type ModeId = "build" | "auto" | "plan"; // widen as modes are added
 
 export type Mode = {
   id: ModeId;
@@ -44,6 +44,20 @@ export const MODES: readonly Mode[] = [
     autoAllow: ["writeFile", "editFile"],
   },
   {
+    id: "auto",
+    label: "Auto",
+    description:
+      "Full access — read, write, edit, and run commands without approval prompts.",
+    instructions:
+      "You are in AUTO mode. You have full tool access and side-effecting actions proceed " +
+      "without user approval prompts. Work autonomously to complete the request: investigate, " +
+      "implement, run commands, and verify. Use bash for builds, tests, and other shell work " +
+      "when needed. Still respect workspace boundaries and avoid destructive actions unless " +
+      "explicitly requested.",
+    tools: "all",
+    autoAllow: ["writeFile", "editFile", "bash"],
+  },
+  {
     id: "plan",
     label: "Plan",
     description:
@@ -52,7 +66,7 @@ export const MODES: readonly Mode[] = [
       "You are in PLAN mode. Do not modify the workspace: you have read-only tools only " +
       "(you cannot write files, edit files, or run commands). Investigate thoroughly, then " +
       "present a clear, step-by-step implementation plan for the user to review and approve. " +
-      "If the user asks you to make changes, explain that they must switch to Build mode (Tab).",
+      "If the user asks you to make changes, explain that they must switch to Build or Auto mode (Tab).",
     tools: ["readFile", "listDirectory", "grep", "glob"],
   },
 ] as const;

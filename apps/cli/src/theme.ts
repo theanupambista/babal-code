@@ -10,6 +10,8 @@ export const colors = {
   accent: "#f05100",
   /** Plan mode label in the prompt footer. */
   plan: "#9ece6a",
+  /** Auto mode label in the prompt footer. */
+  auto: "#7aa2f7",
   /** Default body text. */
   text: "#c0caf5",
   /** Secondary / muted text and unfocused borders. */
@@ -20,5 +22,7 @@ export const colors = {
 
 /** The accent color for a mode — used by the prompt input and user messages. */
 export function modeColor(modeId: string): string {
-  return modeId === "plan" ? colors.plan : colors.accent;
+  if (modeId === "plan") return colors.plan;
+  if (modeId === "auto") return colors.auto;
+  return colors.accent;
 }
