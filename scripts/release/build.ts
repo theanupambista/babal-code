@@ -54,6 +54,62 @@ async function readResolvedVersion(packageName: string, cwd: string): Promise<st
   return stdout.trim();
 }
 
+/**
+ * `@opentui/core`'s tree-sitter syntax highlighting (used by the markdown
+ * renderer) runs in a Worker whose path is auto-detected relative to
+ * `import.meta.dirname`. That detection breaks once bundled into a
+ * standalone `bun build --compile` binary — the worker fails to spawn and
+ * `MarkdownRenderable` silently falls back to plain, unhighlighted text
+ * (https://github.com/anomalyco/opentui/issues/807).
+ *
+ * OpenTUI already supports overriding the path via an `OTUI_TREE_SITTER_WORKER_PATH`
+ * env var, so the fix is: bundle the worker (with its own deps/wasm assets)
+ * into a self-contained file, stage it next to the compiled binary, and
+ * point the env var at it on startup (see `apps/cli/src/index.tsx`).
+ */
+async function resolveOpentuiWorkerSource(): Promise<string> {
+  const cliDir = join(repoRoot, "apps/cli");
+  // `@opentui/core`'s own `exports["./parser.worker"]` map points at a
+  // `lib/tree-sitter/parser.worker.js` that isn't actually shipped (only its
+  // `.d.ts` lives there) — the real file sits next to the package's main
+  // entry, which is also where `TreeSitterClient` resolves it from at
+  // runtime (`new URL("./parser.worker.js", import.meta.url)`). Resolve via
+  // the main entry instead of the broken subpath export.
+  const proc = Bun.spawn(
+    [
+      "bun",
+      "-e",
+      `import { createRequire } from "node:module"; import { dirname, join } from "node:path"; const r = createRequire(import.meta.path); console.log(join(dirname(r.resolve("@opentui/core")), "parser.worker.js"));`,
+    ],
+    { cwd: cliDir, stdout: "pipe", stderr: "pipe" },
+  );
+  const [stdout, stderr, code] = await Promise.all([
+    new Response(proc.stdout).text(),
+    new Response(proc.stderr).text(),
+    proc.exited,
+  ]);
+  if (code !== 0) {
+    throw new Error(`Could not resolve @opentui/core's parser.worker.js: ${stderr.trim()}`);
+  }
+  return stdout.trim();
+}
+
+/**
+ * Bundles the tree-sitter worker (inlining `web-tree-sitter` and its wasm
+ * asset) into `destDir`, so it can ship as a plain file next to the compiled
+ * binary. Plain `bun build` output is portable JS/wasm, so this doesn't need
+ * a per-platform target the way `--compile` does.
+ */
+async function bundleOpentuiWorker(destDir: string): Promise<void> {
+  const workerSource = await resolveOpentuiWorkerSource();
+  const proc = Bun.spawn(
+    ["bun", "build", workerSource, `--outdir=${destDir}`, "--target=bun", "--minify"],
+    { cwd: repoRoot, stdout: "inherit", stderr: "inherit" },
+  );
+  const code = await proc.exited;
+  if (code !== 0) throw new Error(`bundling opentui parser.worker.js failed with exit code ${code}`);
+}
+
 async function ensureCrossArchNativeDeps(platform: PlatformConfig): Promise<void> {
   const host = `${process.platform}-${process.arch}`;
   if (host === platform.id) return;
@@ -173,6 +229,8 @@ async function stagePlatformPackage(
   if (process.platform !== "win32") {
     await chmod(join(binDir, platform.rgBinary), 0o755);
   }
+
+  await bundleOpentuiWorker(binDir);
 
   const templatePath = join(repoRoot, "release/platform/package.json");
   const template = await Bun.file(templatePath).text();
